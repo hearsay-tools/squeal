@@ -63307,46 +63307,46 @@ var init_required_commands = __esm({
 });
 
 // src/core/runner-host/remote/commands-there.ts
+function versionDiffers(fact) {
+  return fact !== void 0 && fact.here !== null && fact.there !== null && fact.here !== fact.there;
+}
+function versionFact(facts, need) {
+  if (need.version === void 0) return void 0;
+  return facts.find((fact) => fact.command === need.command && fact.version === need.version);
+}
 async function commandsThere(required, look) {
   const needs = commandNeeds(required);
   const checked2 = commandNames(needs);
-  const missing2 = new Set(checked2.length === 0 ? [] : await look.missing(checked2));
-  const allMissing = needs.all.filter((need) => missing2.has(need.command));
+  const missing2 = checked2.length === 0 ? [] : await look.missing(checked2);
+  const allMissing = needs.all.filter((need) => missing2.includes(need.command));
   if (allMissing.length > 0) {
     return { refusal: missingText(unique(allMissing.map((need) => need.command)), "there") };
   }
-  const versions2 = await versionsOf(needs, missing2, look);
-  const allDiffer = needs.all.flatMap((need) => versions2.get(need.command) ?? []);
-  if (allDiffer.length > 0) return { refusal: differText(allDiffer) };
-  const files6 = [];
-  for (const { glob: glob2, needs: own } of needs.files) {
-    const lacks = unique(own.filter((n) => missing2.has(n.command)).map((n) => n.command));
-    const differing = own.flatMap((need) => versions2.get(need.command) ?? []);
-    if (lacks.length > 0 || differing.length > 0) files6.push({ glob: glob2, missing: lacks, differing });
-  }
-  return { checked: checked2, files: files6 };
+  const versions2 = await versionsOf(needs, new Set(missing2), look);
+  const allDiffer = needs.all.map((need) => versionFact(versions2, need)).filter(versionDiffers);
+  if (allDiffer.length > 0) return { refusal: differText(uniqueFacts(allDiffer)) };
+  return { checked: checked2, missing: missing2, versions: versions2 };
 }
 async function versionsOf(needs, missing2, look) {
-  const diffs = /* @__PURE__ */ new Map();
-  const seen2 = /* @__PURE__ */ new Set();
+  const facts = [];
   for (const need of [...needs.all, ...needs.files.flatMap((file) => file.needs)]) {
     if (need.version === void 0 || missing2.has(need.command)) continue;
-    const key3 = `${need.command}\0${need.version}`;
-    if (seen2.has(key3)) continue;
-    seen2.add(key3);
+    if (versionFact(facts, need) !== void 0) continue;
     const versioned = { command: need.command, version: need.version };
     const here = look.versionHere(versioned);
-    if (here === null) continue;
-    const there = await look.version(versioned);
-    if (there !== here) diffs.set(need.command, { command: need.command, here, there });
+    const there = here === null ? null : await look.version(versioned);
+    facts.push({ ...versioned, here, there });
   }
-  return diffs;
+  return facts;
 }
-function differText(diffs) {
-  const each = diffs.map(
+function differText(facts) {
+  const each = facts.map(
     (d) => `${d.command} ${JSON.stringify(d.there)} there, ${JSON.stringify(d.here)} here`
   );
   return `tests need the same version of ${each.join("; ")}`;
+}
+function uniqueFacts(facts) {
+  return facts.filter((fact, i3) => facts.indexOf(fact) === i3);
 }
 function unique(names9) {
   return [...new Set(names9)];
@@ -63392,7 +63392,6 @@ var init_commands_there = __esm({
 // src/core/runner-host/remote/remote-setup.ts
 import { spawn as spawn15 } from "node:child_process";
 import { createHash as createHash43 } from "node:crypto";
-import { existsSync as existsSync53 } from "node:fs";
 import { mkdir as mkdir2, readFile as readFile13, rename, writeFile } from "node:fs/promises";
 import { join as join139 } from "node:path";
 async function runSetup(place2) {
@@ -63407,21 +63406,28 @@ async function runSetup(place2) {
     return { ran: false, sha256: null, failed: "no such file in the tree", output: "" };
   }
   const sha2564 = createHash43("sha256").update(bytes2).digest("hex");
-  const mark = join139(place2.marks, sha2564);
-  if (existsSync53(mark)) return { ran: false, sha256: sha2564, output: "" };
+  const mark = join139(place2.marks, SETUP_MARK);
   await mkdir2(place2.marks, { recursive: true });
   return place2.locked(`${mark}.lock`, async () => {
-    if (existsSync53(mark)) return { ran: false, sha256: sha2564, output: "" };
+    if (await markOf(mark) === sha2564) return { ran: false, sha256: sha2564, output: "" };
     const ended2 = await runScript(script2, place2);
     if (ended2.failed === void 0) {
       const part2 = `${mark}.${process.pid}.part`;
-      await writeFile(part2, `${place2.path}
+      await writeFile(part2, `${sha2564}
+${place2.path}
 `);
       await rename(part2, mark);
     }
     const failed7 = ended2.failed === void 0 ? {} : { failed: ended2.failed };
     return { ran: true, sha256: sha2564, output: ended2.output, ...failed7 };
   });
+}
+async function markOf(mark) {
+  try {
+    return (await readFile13(mark, "utf8")).split("\n")[0] ?? null;
+  } catch {
+    return null;
+  }
 }
 function runScript(script2, place2) {
   const timeoutMs = place2.timeoutMs ?? SETUP_MS;
@@ -63473,13 +63479,14 @@ function setupRefusal(path, destination, answer4) {
   const end = lastLines(answer4.output);
   return `remote.setup ${path} failed on ${destination} (${answer4.failed})${end === "" ? "" : `: ${end}`}`;
 }
-var SETUP_MS, OUTPUT_TAIL;
+var SETUP_MS, OUTPUT_TAIL, SETUP_MARK;
 var init_remote_setup = __esm({
   "src/core/runner-host/remote/remote-setup.ts"() {
     "use strict";
     init_tree_wire();
     SETUP_MS = 9e5;
     OUTPUT_TAIL = 8e3;
+    SETUP_MARK = "last-success";
   }
 });
 
@@ -63685,14 +63692,14 @@ var init_tree2 = __esm({
 // src/core/runner-host/remote/package-manager.ts
 import { spawn as spawn16 } from "node:child_process";
 import { randomBytes as randomBytes5 } from "node:crypto";
-import { accessSync as accessSync5, constants as constants11, existsSync as existsSync54, readFileSync as readFileSync70, statSync as statSync35 } from "node:fs";
+import { accessSync as accessSync5, constants as constants11, existsSync as existsSync53, readFileSync as readFileSync70, statSync as statSync35 } from "node:fs";
 import { mkdir as mkdir3, open as open3, rename as rename2, rm as rm3, unlink } from "node:fs/promises";
 import { delimiter as delimiter9, dirname as dirname55, join as join141, resolve as resolve35 } from "node:path";
 import { setTimeout as sleep19 } from "node:timers/promises";
 function hostTools() {
   const nodeDir = dirname55(process.execPath);
   const cli = join141(nodeDir, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js");
-  return { nodeDir, npm: existsSync54(cli) ? [process.execPath, cli] : ["npm"] };
+  return { nodeDir, npm: existsSync53(cli) ? [process.execPath, cli] : ["npm"] };
 }
 function managerSpec(name3, manifest, berry) {
   const declared = typeof manifest === "object" && manifest !== null ? manifest.packageManager : void 0;
@@ -63834,7 +63841,7 @@ var init_package_manager = __esm({
 });
 
 // src/core/runner-host/remote/tree-install.ts
-import { existsSync as existsSync55, readFileSync as readFileSync71 } from "node:fs";
+import { existsSync as existsSync54, readFileSync as readFileSync71 } from "node:fs";
 import { rename as rename3, rm as rm4, writeFile as writeFile2 } from "node:fs/promises";
 import { dirname as dirname56, join as join142 } from "node:path";
 async function installTree(place2) {
@@ -63842,7 +63849,7 @@ async function installTree(place2) {
   if (Object.keys(locks).length === 0) return { ran: false, command: null };
   const fingerprint = () => installedDependenciesFingerprint(root, root);
   const last = readInstalled(place2.record);
-  const same5 = last !== null && JSON.stringify(last.locks) === JSON.stringify(locks) && last.modules === existsSync55(join142(root, "node_modules"));
+  const same5 = last !== null && JSON.stringify(last.locks) === JSON.stringify(locks) && last.modules === existsSync54(join142(root, "node_modules"));
   const unchanged2 = same5 && last.installed !== void 0 && await fingerprint() === last.installed;
   if (!unchanged2 && same5 && !place2.keepModules) {
     await rm4(join142(root, "node_modules"), { recursive: true, force: true });
@@ -63859,7 +63866,7 @@ async function installTree(place2) {
   await runOutput("sh", ["-c", command], { cwd: root, env, output: place2.output, what: command });
   const made = {
     locks,
-    modules: existsSync55(join142(root, "node_modules")),
+    modules: existsSync54(join142(root, "node_modules")),
     installed: await fingerprint()
   };
   const part2 = `${place2.record}.part`;
@@ -63942,11 +63949,17 @@ async function startRemoteHost(options) {
     `${target.destination}: Node ${ensured.check.node}; Squeal ${options.version} ${ensured.copied ? "copied" : "present"}`
   );
   await options.diskCheck?.();
-  const looked2 = await commandsThere(
-    options.commands ?? [],
-    sshLook(target, places, deadlines.sshMs)
-  );
-  if ("refusal" in looked2) throw new RemoteRefusal(looked2.refusal);
+  let looked2;
+  const look = async () => {
+    const answer4 = await commandsThere(
+      options.commands ?? [],
+      sshLook(target, places, deadlines.sshMs)
+    );
+    if ("refusal" in answer4) throw new RemoteRefusal(answer4.refusal);
+    looked2 = answer4;
+  };
+  const setup2 = options.setup ?? null;
+  if (setup2 === null) await look();
   const tree = treeDir(places, root);
   const command = hostCommand(places, options.version, bundle.cli, tree, options.runner);
   const mapped = options.coverage === "remote" && options.options.coverage !== void 0;
@@ -63955,12 +63968,18 @@ async function startRemoteHost(options) {
     await remoteTreeDir(target, tree, deadlines.sshMs),
     options.coverage
   );
-  const host = await remoteHostOver(channelOf(spawnSsh(target, command)), ensured.check.node, {
-    ...options,
-    options: adapterOptions
-  });
+  const host = await remoteHostOver(
+    channelOf(spawnSsh(target, command)),
+    ensured.check.node,
+    { ...options, options: adapterOptions },
+    setup2 === null ? void 0 : look
+  );
   const git = ensured.check.git;
-  return { ...host, ...git === void 0 ? {} : { gitVersion: git }, commands: looked2 };
+  return {
+    ...host,
+    ...git === void 0 ? {} : { gitVersion: git },
+    ...looked2 === void 0 ? {} : { commands: looked2 }
+  };
 }
 async function remoteTreeDir(target, tree, deadlineMs) {
   const q = shellQuote(tree);
@@ -63994,7 +64013,7 @@ function withoutCoverage(options) {
   const { coverage: _none, ...kept6 } = data2;
   return { ...rest2, process: kept6 };
 }
-async function remoteHostOver(channel2, node2, options) {
+async function remoteHostOver(channel2, node2, options, prepared) {
   const hostDeadlines = { ...REMOTE_HOST_DEADLINES, ...options.deadlines };
   const deadlines = { ...REMOTE_DEADLINES, ...hostDeadlines };
   const callMs = deadlines.callMs ?? 3e5;
@@ -64051,6 +64070,7 @@ ${output}`}`
         `${target.destination}: tree of ${entries3.length} files, ${missing2.length} sent (${mib(bytes2)}, ${mib(wire)} on the wire)`
       );
       if (options.setup != null) await setup2(on, options.setup);
+      await prepared?.();
       await install(on);
     },
     invalidateWith: async (paths) => {
@@ -77717,7 +77737,7 @@ var init_chokidar = __esm({
 });
 
 // src/core/watcher/chokidar-backend.ts
-import { existsSync as existsSync60 } from "node:fs";
+import { existsSync as existsSync59 } from "node:fs";
 import { basename as basename30, dirname as dirname65, join as join160 } from "node:path";
 async function open6(spec, filter, listener) {
   const watcher = watch([spec.root, ...spec.extraFiles], {
@@ -77740,7 +77760,7 @@ async function open6(spec, filter, listener) {
 function inNestedRepo(root, path) {
   const holder = basename30(path) === ".git" ? dirname65(path) : path;
   for (let dir2 = dirname65(holder); dir2.startsWith(`${root}/`); dir2 = dirname65(dir2)) {
-    if (existsSync60(join160(dir2, ".git"))) return true;
+    if (existsSync59(join160(dir2, ".git"))) return true;
   }
   return false;
 }
@@ -79287,7 +79307,7 @@ var init_discovery_defaults = __esm({
 });
 
 // src/runners/pytest/adapter-files.ts
-import { existsSync as existsSync61, readdirSync as readdirSync45 } from "node:fs";
+import { existsSync as existsSync60, readdirSync as readdirSync45 } from "node:fs";
 import { basename as basename34, dirname as dirname70, join as join168, relative as relative27, sep as sep30 } from "node:path";
 function listTestFiles2(root, project, note) {
   const cwd = projectDir(root, project);
@@ -79335,7 +79355,7 @@ function recursionSettings(root, cwd) {
 }
 function never2(path, env) {
   const name3 = basename34(path);
-  return name3 === ".git" || name3 === "__pycache__" || path === env || existsSync61(join168(path, "pyvenv.cfg"));
+  return name3 === ".git" || name3 === "__pycache__" || path === env || existsSync60(join168(path, "pyvenv.cfg"));
 }
 function holds3(dir2, canWalk, isTest) {
   const name3 = basename34(dir2);
@@ -79432,7 +79452,7 @@ var init_adapter_files2 = __esm({
 });
 
 // src/runners/pytest/adapter-environment.ts
-import { existsSync as existsSync62 } from "node:fs";
+import { existsSync as existsSync61 } from "node:fs";
 import { join as join169, relative as relative28, resolve as resolve42, sep as sep31 } from "node:path";
 function environmentDir(root, project) {
   const discovery = discoverEnvironment(root, project);
@@ -79485,7 +79505,7 @@ function pytestMarker(envDir) {
 function admitEnvironment(root, project, environment) {
   if (environment.state !== "ready") return environment;
   const marker2 = pytestMarker(environment.discovery.env);
-  if (marker2 !== null && existsSync62(marker2)) return environment;
+  if (marker2 !== null && existsSync61(marker2)) return environment;
   const where3 = toRelative(root, environment.discovery.env) ?? environment.discovery.env;
   return {
     state: "no-pytest",
@@ -80157,7 +80177,7 @@ var init_entry_points = __esm({
 });
 
 // src/runners/pytest/environment/import-roots.ts
-import { existsSync as existsSync63 } from "node:fs";
+import { existsSync as existsSync62 } from "node:fs";
 import { join as join175, resolve as resolve44 } from "node:path";
 function importRoots(env) {
   const cfg = readPyvenvCfg(env);
@@ -80169,7 +80189,7 @@ function importRoots(env) {
     for (const name3 of pthFiles(site)) {
       const lines = readPthLines(site, name3);
       for (const path of lines.paths) {
-        if (known4.has(path) || !existsSync63(path)) continue;
+        if (known4.has(path) || !existsSync62(path)) continue;
         known4.add(path);
         pthPaths.push(path);
       }
@@ -81119,7 +81139,7 @@ var init_stdlib_names = __esm({
 });
 
 // src/runners/pytest/graph/search-path.ts
-import { existsSync as existsSync64 } from "node:fs";
+import { existsSync as existsSync63 } from "node:fs";
 import { dirname as dirname74, join as join179 } from "node:path";
 function searchPath(inputs2) {
   const cfg = inputs2.env === null ? null : readPyvenvCfg(inputs2.env);
@@ -81166,7 +81186,7 @@ function searchPath(inputs2) {
 }
 function basedir(file) {
   let at2 = dirname74(file);
-  while (existsSync64(join179(at2, "__init__.py"))) at2 = dirname74(at2);
+  while (existsSync63(join179(at2, "__init__.py"))) at2 = dirname74(at2);
   return at2;
 }
 function pin(inputs2) {
@@ -81195,7 +81215,7 @@ var init_search_path = __esm({
 });
 
 // src/runners/pytest/graph/graph.ts
-import { existsSync as existsSync65 } from "node:fs";
+import { existsSync as existsSync64 } from "node:fs";
 import { basename as basename36, dirname as dirname75, join as join180, relative as relative30, sep as sep34 } from "node:path";
 var STRUCTURAL, Graph2;
 var init_graph4 = __esm({
@@ -81335,7 +81355,7 @@ var init_graph4 = __esm({
           if (at2 === top2 || !at2.startsWith(top2 + sep34)) break;
           at2 = dirname75(at2);
         }
-        return dirs.map((d) => join180(d, "conftest.py")).filter((c) => c !== file && existsSync65(c));
+        return dirs.map((d) => join180(d, "conftest.py")).filter((c) => c !== file && existsSync64(c));
       }
       present(closure) {
         const paths = [...closure.members].map((p) => this.rel(p)).sort();
@@ -81918,7 +81938,7 @@ var init_enumerate3 = __esm({
 
 // src/runners/jest/environment.ts
 import { execFile as execFile11 } from "node:child_process";
-import { existsSync as existsSync66, readdirSync as readdirSync48, readFileSync as readFileSync79, realpathSync as realpathSync33, statSync as statSync47 } from "node:fs";
+import { existsSync as existsSync65, readdirSync as readdirSync48, readFileSync as readFileSync79, realpathSync as realpathSync33, statSync as statSync47 } from "node:fs";
 import { dirname as dirname76, join as join182, relative as relative31, resolve as resolve47, sep as sep35 } from "node:path";
 function isTransformConfig(path) {
   return TRANSFORM_CONFIG_NAMES.has(path.slice(path.lastIndexOf("/") + 1));
@@ -82021,9 +82041,9 @@ function configFiles2(root, project, read7, env, extraDirs = []) {
   const rootDir = read7.ok ? String(read7.project.rootDir) : dirname76(config);
   const dirs = upTo(rootDir, root);
   for (const dir2 of dirs) for (const name3 of BABEL) files6.push(join182(dir2, name3));
-  const manifest = dirs.map((dir2) => join182(dir2, "package.json")).find((path) => existsSync66(path));
+  const manifest = dirs.map((dir2) => join182(dir2, "package.json")).find((path) => existsSync65(path));
   if (manifest !== void 0) files6.push(manifest);
-  const tsconfig = dirs.flatMap((dir2) => TSCONFIGS2.map((name3) => join182(dir2, name3))).find(existsSync66);
+  const tsconfig = dirs.flatMap((dir2) => TSCONFIGS2.map((name3) => join182(dir2, name3))).find(existsSync65);
   for (const path of [tsconfig, env.TS_NODE_PROJECT]) {
     if (path !== void 0) files6.push(...extendsChain(resolve47(jestCwd(root, project), path)));
   }
@@ -82092,7 +82112,7 @@ function extendsOf(path) {
 function packageVersions(root, cwd, read7) {
   const versions2 = {};
   for (const name3 of PACKAGES2) {
-    const dir2 = upTo(cwd, root).map((d) => join182(d, "node_modules", name3)).find((d) => existsSync66(join182(d, "package.json")));
+    const dir2 = upTo(cwd, root).map((d) => join182(d, "node_modules", name3)).find((d) => existsSync65(join182(d, "package.json")));
     versions2[name3] = dir2 === void 0 ? null : manifestOf5(dir2)?.version ?? null;
   }
   for (const value of strings6(read7.project)) {
@@ -82420,7 +82440,7 @@ var init_snapshots = __esm({
 });
 
 // src/runners/jest/graph/index.ts
-import { existsSync as existsSync67, realpathSync as realpathSync34 } from "node:fs";
+import { existsSync as existsSync66, realpathSync as realpathSync34 } from "node:fs";
 import { dirname as dirname78, join as join184, sep as sep36 } from "node:path";
 async function createJestGraph(options) {
   await parserReady;
@@ -82517,7 +82537,7 @@ function nearestTsconfig(dir2, root) {
   for (let at2 = dir2; ; at2 = dirname78(at2)) {
     for (const name3 of TSCONFIGS3) {
       const path = join184(at2, name3);
-      if (existsSync67(path)) return path;
+      if (existsSync66(path)) return path;
     }
     if (at2 === root) return void 0;
   }
@@ -82559,7 +82579,7 @@ var init_version5 = __esm({
 });
 
 // src/runners/jest/adapter.ts
-import { existsSync as existsSync68, realpathSync as realpathSync35 } from "node:fs";
+import { existsSync as existsSync67, realpathSync as realpathSync35 } from "node:fs";
 import { tmpdir as tmpdir15 } from "node:os";
 import { dirname as dirname79, extname as extname12, join as join185, relative as relative32, sep as sep37 } from "node:path";
 async function createJestAdapter(project, options) {
@@ -82727,7 +82747,7 @@ async function createJestAdapter(project, options) {
   }
 }
 function withoutBuiltinProbes(observed3, paths) {
-  const builtin = (path) => BUILTIN2.test(path) && !existsSync68(paths.toAbsolute(path));
+  const builtin = (path) => BUILTIN2.test(path) && !existsSync67(paths.toAbsolute(path));
   return observed3.map(
     (o) => o.paths.some(builtin) ? { ...o, paths: o.paths.filter((p) => !builtin(p)) } : o
   );
@@ -84217,7 +84237,7 @@ __export(writer_exports, {
   RESULT_WAITS_MS: () => RESULT_WAITS_MS,
   createCoverageWriter: () => createCoverageWriter
 });
-import { existsSync as existsSync69, rmSync as rmSync36 } from "node:fs";
+import { existsSync as existsSync68, rmSync as rmSync36 } from "node:fs";
 function createCoverageWriter(options) {
   const now = options.now ?? Date.now;
   const waits2 = options.waitsMs ?? RESULT_WAITS_MS;
@@ -84267,7 +84287,7 @@ function createCoverageWriter(options) {
     try {
       return await mapperNow().map(file);
     } catch (error) {
-      if (closed || !existsSync69(file.payload)) throw error;
+      if (closed || !existsSync68(file.payload)) throw error;
       return threadMapper(mapping, blobs).map(file);
     }
   };
@@ -85359,7 +85379,7 @@ var init_edit = __esm({
 });
 
 // src/core/code/pass/head.ts
-import { existsSync as existsSync70, readFileSync as readFileSync80 } from "node:fs";
+import { existsSync as existsSync69, readFileSync as readFileSync80 } from "node:fs";
 import { join as join188 } from "node:path";
 async function committedPaths(ctx, since, upTo2, files6) {
   const asked = files6.filter((f) => !f.path.includes("\n"));
@@ -85394,7 +85414,7 @@ function operationRevisions(root) {
   const gitDir = top2 === null ? null : gitDirOf(top2);
   if (gitDir === null) return [];
   const revs = OPERATIONS.flatMap(([file, rev]) => shasIn(join188(gitDir, file)).map(rev));
-  if (REBASE_DIRS.some((dir2) => existsSync70(join188(gitDir, dir2)))) revs.push("HEAD");
+  if (REBASE_DIRS.some((dir2) => existsSync69(join188(gitDir, dir2)))) revs.push("HEAD");
   return revs;
 }
 function shasIn(path) {
@@ -86830,7 +86850,7 @@ var init_install2 = __esm({
 });
 
 // src/core/lint/provider/oxlint/configs.ts
-import { existsSync as existsSync71, readdirSync as readdirSync49, readFileSync as readFileSync81 } from "node:fs";
+import { existsSync as existsSync70, readdirSync as readdirSync49, readFileSync as readFileSync81 } from "node:fs";
 import { basename as basename38, dirname as dirname80, join as join191, posix as posix19, relative as relative33, sep as sep38 } from "node:path";
 function isOxlintConfigInput(path) {
   const name3 = basename38(path);
@@ -86838,7 +86858,7 @@ function isOxlintConfigInput(path) {
 }
 function configIn(root, dir2) {
   for (const name3 of CONFIG_NAMES2) {
-    if (existsSync71(join191(root, dir2, name3))) return toRelative2(posix19.join(dir2, name3));
+    if (existsSync70(join191(root, dir2, name3))) return toRelative2(posix19.join(dir2, name3));
   }
   return null;
 }
@@ -86990,7 +87010,7 @@ function chainOf(root, file, folders) {
 function configAbove(root) {
   for (let dir2 = dirname80(root); ; dir2 = dirname80(dir2)) {
     for (const name3 of CONFIG_NAMES2) {
-      if (existsSync71(join191(dir2, name3))) return toRelative2(relative33(root, join191(dir2, name3)));
+      if (existsSync70(join191(dir2, name3))) return toRelative2(relative33(root, join191(dir2, name3)));
     }
     if (dirname80(dir2) === dir2) return null;
   }
@@ -88576,32 +88596,51 @@ var init_blob_cache = __esm({
 });
 
 // src/core/runner-host/remote/lane-commands.ts
+function lackOf(needs, there) {
+  const missing2 = /* @__PURE__ */ new Set();
+  const differing = [];
+  const unmeasured = /* @__PURE__ */ new Set();
+  for (const need of needs) {
+    if (!there.checked.includes(need.command)) unmeasured.add(need.command);
+    else if (there.missing.includes(need.command)) missing2.add(need.command);
+    else if (need.version !== void 0) {
+      const fact = versionFact(there.versions, need);
+      if (fact === void 0) unmeasured.add(`${need.command} ${need.version}`);
+      else if (versionDiffers(fact) && !differing.some((d) => d.command === fact.command)) {
+        differing.push({ command: fact.command, here: fact.here, there: fact.there });
+      }
+    }
+  }
+  return { missing: [...missing2], differing, unmeasured: [...unmeasured] };
+}
 function commandRoute(required, there, target) {
-  const { files: files6 } = commandNeeds(required);
-  if (files6.length === 0) return { globs: [], text: null };
-  if (there === null) return { globs: files6.map((file) => file.glob), text: null };
-  const checked2 = new Set(there.checked);
+  const needs = commandNeeds(required);
+  if (there === null) {
+    const globs5 = needs.files.map((file) => file.glob);
+    return { globs: globs5, text: null, provisional: globs5.length > 0 };
+  }
+  const groups3 = [
+    ...needs.all.length === 0 ? [] : [{ glob: EVERY_FILE, needs: needs.all }],
+    ...needs.files
+  ];
   const globs4 = [];
   const lacking = [];
   const fixes = /* @__PURE__ */ new Set();
   const unchecked2 = [];
-  for (const { glob: glob2, needs } of files6) {
-    const names9 = new Set(needs.map((need) => need.command));
-    const lack = there.files.find((file) => file.glob === glob2);
-    const missing2 = lack?.missing.filter((name3) => names9.has(name3)) ?? [];
-    const differing = lack?.differing.filter((diff) => names9.has(diff.command)) ?? [];
-    const notLooked = [...names9].filter((name3) => !checked2.has(name3));
+  for (const { glob: glob2, needs: own } of groups3) {
+    const { missing: missing2, differing, unmeasured } = lackOf(own, there);
+    const files6 = glob2 === EVERY_FILE ? "every test file" : glob2;
     for (const name3 of [...missing2, ...differing.map((diff) => diff.command)]) fixes.add(name3);
-    if (missing2.length > 0) lacking.push(`${target} lacks ${missing2.join(", ")} for ${glob2}`);
+    if (missing2.length > 0) lacking.push(`${target} lacks ${missing2.join(", ")} for ${files6}`);
     for (const diff of differing) {
       lacking.push(
-        `${target} has ${diff.command} ${JSON.stringify(diff.there)}, this machine ${JSON.stringify(diff.here)}, for ${glob2}`
+        `${target} has ${diff.command} ${JSON.stringify(diff.there)}, this machine ${JSON.stringify(diff.here)}, for ${files6}`
       );
     }
-    if (notLooked.length > 0) {
-      unchecked2.push(`${notLooked.join(", ")} not yet looked for on ${target} for ${glob2}`);
+    if (unmeasured.length > 0) {
+      unchecked2.push(`${unmeasured.join(", ")} not yet looked for on ${target} for ${files6}`);
     }
-    if (missing2.length + differing.length + notLooked.length > 0) globs4.push(glob2);
+    if (missing2.length + differing.length + unmeasured.length > 0) globs4.push(glob2);
   }
   const parts3 = [];
   if (lacking.length > 0) {
@@ -88611,7 +88650,11 @@ function commandRoute(required, there, target) {
   if (unchecked2.length > 0) {
     parts3.push(`${unchecked2.join("; ")}; these files run here until it connects again`);
   }
-  return { globs: globs4, text: parts3.length === 0 ? null : parts3.join("; ") };
+  return {
+    globs: globs4,
+    text: parts3.length === 0 ? null : parts3.join("; "),
+    provisional: unchecked2.length > 0
+  };
 }
 function memoCommandRoute(required, there, target) {
   let last = null;
@@ -88623,10 +88666,13 @@ function memoCommandRoute(required, there, target) {
     return last.route;
   };
 }
+var EVERY_FILE;
 var init_lane_commands = __esm({
   "src/core/runner-host/remote/lane-commands.ts"() {
     "use strict";
     init_required_commands();
+    init_commands_there();
+    EVERY_FILE = "**";
   }
 });
 
@@ -89722,8 +89768,11 @@ function withRemoteLane(options) {
       if (!goesRemote(run9, tiers)) return runDirect(testFiles3, run9);
       await refreshRepository();
       const waits2 = options.awaitConnect === true || options.whenLost === "not-run";
-      if (waits2 && state.kind !== "ready" && commandRoute2().globs.length > 0) {
+      const commands2 = state.kind === "ready" ? null : commandRoute2();
+      if (waits2 && commands2 !== null && commands2.globs.length > 0) {
         await ready2(true, cancelOf(run9));
+      } else if (commands2?.provisional === true) {
+        await reach2(false);
       }
       const split6 = route.split(testFiles3);
       const { there } = split6;
@@ -90616,13 +90665,13 @@ var init_fetch = __esm({
 });
 
 // src/core/shared/local.ts
-import { existsSync as existsSync72 } from "node:fs";
+import { existsSync as existsSync71 } from "node:fs";
 import { join as join197 } from "node:path";
 async function headOf(root, call2) {
   const head2 = readGitHead(root);
   if (head2 !== null) return head2;
   const common = resolveCommonDir(root);
-  if (common === null || !existsSync72(join197(common, "reftable"))) return null;
+  if (common === null || !existsSync71(join197(common, "reftable"))) return null;
   const answer4 = await gitCall(root, ["rev-parse", "--verify", "-q", "HEAD"], call2);
   const text3 = textOf(answer4)?.trim() ?? "";
   return text3 === "" ? null : text3;
@@ -116890,7 +116939,7 @@ init_config_file();
 init_container_guard();
 
 // src/core/daemon/desk.ts
-import { existsSync as existsSync56 } from "node:fs";
+import { existsSync as existsSync55 } from "node:fs";
 import { fileURLToPath as fileURLToPath21 } from "node:url";
 import { Worker as Worker3 } from "node:worker_threads";
 
@@ -117616,7 +117665,7 @@ function started(worker) {
 function frontDeskScript(module2) {
   for (const name3 of ["./front-desk.js", "./front-desk.mjs"]) {
     const script2 = fileURLToPath21(new URL(name3, module2));
-    if (existsSync56(script2)) return script2;
+    if (existsSync55(script2)) return script2;
   }
   return null;
 }
@@ -117983,7 +118032,7 @@ init_low_priority();
 init_git();
 init_git_layout();
 init_events2();
-import { existsSync as existsSync57, realpathSync as realpathSync26 } from "node:fs";
+import { existsSync as existsSync56, realpathSync as realpathSync26 } from "node:fs";
 import { join as join150 } from "node:path";
 import { setTimeout as sleep20 } from "node:timers/promises";
 init_connection();
@@ -118139,7 +118188,7 @@ async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VAC
   let commonDir;
   try {
     root = realpathSync26(rootArgument);
-    if (!existsSync57(join150(root, ".git"))) throw new Error(`${root} has no .git entry`);
+    if (!existsSync56(join150(root, ".git"))) throw new Error(`${root} has no .git entry`);
     const out2 = await runGit(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
     commonDir = realpathSync26(out2.trim());
   } catch (error) {
@@ -118259,7 +118308,7 @@ function takenOver2(root) {
   const own = squealVersion();
   let first2;
   return () => {
-    if (!existsSync57(root)) return true;
+    if (!existsSync56(root)) return true;
     const record2 = recordedDaemon(root);
     const startedAt = record2?.startedAt ?? null;
     if (first2 === void 0) first2 = startedAt;
@@ -118268,7 +118317,7 @@ function takenOver2(root) {
   };
 }
 function servedElsewhere(root, commonDir, worktreeId, now) {
-  return () => !existsSync57(root) || liveDaemonRecorded(root, now()) || newerRecorded(commonDir, worktreeId, 100);
+  return () => !existsSync56(root) || liveDaemonRecorded(root, now()) || newerRecorded(commonDir, worktreeId, 100);
 }
 function newerRecorded(commonDir, worktreeId, busyTimeoutMs) {
   const last = readLastDaemon(commonDir, worktreeId, busyTimeoutMs);
@@ -118901,7 +118950,7 @@ function isEpochMs(value) {
 
 // src/core/daemon/lifecycle.ts
 init_prune2();
-import { existsSync as existsSync59 } from "node:fs";
+import { existsSync as existsSync58 } from "node:fs";
 
 // src/core/code/store/prune-main.ts
 init_open2();
@@ -118936,7 +118985,7 @@ init_store_records();
 
 // src/core/waiter-lock/waiter-lock.ts
 import { createHash as createHash48 } from "node:crypto";
-import { existsSync as existsSync58, mkdirSync as mkdirSync33, rmSync as rmSync34 } from "node:fs";
+import { existsSync as existsSync57, mkdirSync as mkdirSync33, rmSync as rmSync34 } from "node:fs";
 import { join as join151 } from "node:path";
 import { DatabaseSync as DatabaseSync13 } from "node:sqlite";
 function waiterLockPath(locksDir, consumer) {
@@ -118945,7 +118994,7 @@ function waiterLockPath(locksDir, consumer) {
 }
 function removeWaiterLock(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
-  if (!existsSync58(path)) return;
+  if (!existsSync57(path)) return;
   const db = lock(path);
   if (db === null) return;
   try {
@@ -118956,7 +119005,7 @@ function removeWaiterLock(locksDir, consumer) {
 }
 function waiterLockState(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
-  if (!existsSync58(path)) return "absent";
+  if (!existsSync57(path)) return "absent";
   const db = lock(path);
   if (db === null) return "held";
   db.close();
@@ -119472,11 +119521,11 @@ function startTimers(context2) {
   const unlog = logLongWrites((write4) => context2.log(longWriteLine(write4)));
   const checkpoint2 = new IdleCheckpoint();
   const check3 = () => {
-    if (!existsSync59(context2.root)) {
+    if (!existsSync58(context2.root)) {
       context2.shutdown("root-removed", `daemon stopped: worktree root ${context2.root} was deleted`);
       return;
     }
-    if (context2.linkedDir !== null && !existsSync59(context2.linkedDir)) {
+    if (context2.linkedDir !== null && !existsSync58(context2.linkedDir)) {
       context2.shutdown(
         "worktree-removed",
         `daemon stopped: worktree entry ${context2.linkedDir} was removed`
@@ -121579,12 +121628,12 @@ function eslintFindings(messages, text3) {
 }
 
 // src/core/lint/provider/script.ts
-import { existsSync as existsSync73 } from "node:fs";
+import { existsSync as existsSync72 } from "node:fs";
 import { fileURLToPath as fileURLToPath24 } from "node:url";
 function lintWorkerScript(module2 = new URL(import.meta.url)) {
   for (const name3 of ["./worker.js", "./lint-worker.mjs"]) {
     const script2 = fileURLToPath24(new URL(name3, module2));
-    if (existsSync73(script2)) return script2;
+    if (existsSync72(script2)) return script2;
   }
   return null;
 }
@@ -121898,7 +121947,7 @@ function merged3(whole, delta) {
 
 // src/core/lint/provider/oxlint/provider.ts
 init_blob();
-import { existsSync as existsSync76 } from "node:fs";
+import { existsSync as existsSync75 } from "node:fs";
 import { join as join202 } from "node:path";
 
 // src/core/lint/provider/oxlint/cache.ts
@@ -122024,7 +122073,7 @@ function parse13(text3) {
 }
 
 // src/core/lint/provider/oxlint/config-set.ts
-import { existsSync as existsSync74 } from "node:fs";
+import { existsSync as existsSync73 } from "node:fs";
 import { join as join199 } from "node:path";
 init_configs();
 
@@ -122284,7 +122333,7 @@ async function readConfigs(ctx, failed7, cache2 = new OxlintCache(memoryBacking(
   const above = rootConfig === null ? configAbove(root) : null;
   const facts = jsonFacts(root, configs);
   const { closure } = facts;
-  const present3 = ROOT_INPUTS.filter((name3) => existsSync74(join199(root, name3)));
+  const present3 = ROOT_INPUTS.filter((name3) => existsSync73(join199(root, name3)));
   const keyed = [...configs, ...present3, ...closure, ...above === null ? [] : [above]];
   const { key: key3, kept: kept6, hit } = await lookUp2(ctx, cache2, keyed);
   const { importPlugin, javascript } = facts;
@@ -122292,7 +122341,7 @@ async function readConfigs(ctx, failed7, cache2 = new OxlintCache(memoryBacking(
   if ("off" in read7) return read7;
   if (read7.printed?.typeAware === true) return { off: null, reason: TYPE_AWARE_OFF };
   for (const path of read7.held.keys()) {
-    if (!configs.includes(path) && existsSync74(join199(root, path))) closure.add(path);
+    if (!configs.includes(path) && existsSync73(join199(root, path))) closure.add(path);
   }
   if (read7.entry !== null && read7.entry !== kept6) await cache2.write(root, read7.entry);
   return {
@@ -122375,7 +122424,7 @@ function printedConfig(stdout) {
 }
 
 // src/core/lint/provider/oxlint/discover.ts
-import { existsSync as existsSync75, readFileSync as readFileSync86, realpathSync as realpathSync37 } from "node:fs";
+import { existsSync as existsSync74, readFileSync as readFileSync86, realpathSync as realpathSync37 } from "node:fs";
 import { dirname as dirname82, join as join200 } from "node:path";
 var MIN_VERSION = [1, 65];
 function discoverOxlint(root) {
@@ -122396,7 +122445,7 @@ function discoverOxlint(root) {
 function findManifest(root) {
   for (let dir2 = root; ; dir2 = dirname82(dir2)) {
     const manifest = join200(dir2, "node_modules", "oxlint", "package.json");
-    if (existsSync75(manifest)) return manifest;
+    if (existsSync74(manifest)) return manifest;
     if (dirname82(dir2) === dir2) return null;
   }
 }
@@ -122835,12 +122884,12 @@ var Provider = class {
     return answers2;
   }
   likelyLinted(path) {
-    return LINTED_EXTENSIONS.test(path) && existsSync76(join202(this.options.root, path));
+    return LINTED_EXTENSIONS.test(path) && existsSync75(join202(this.options.root, path));
   }
   report(results3, held4) {
     const all2 = new Map(held4);
     for (const path of held4.keys())
-      if (existsSync76(join202(this.options.root, path))) this.closure.add(path);
+      if (existsSync75(join202(this.options.root, path))) this.closure.add(path);
     const native = [...this.declaration?.configFiles ?? [], ...this.configs?.closure ?? []];
     for (const [path, blob] of blobsNow(this.options.root, native, this.format)) {
       if (!all2.has(path) && blob !== null) all2.set(path, { others: [blob] });
@@ -123562,13 +123611,13 @@ async function tellDaemons(root) {
 init_git_layout();
 init_json();
 init_policy();
-import { existsSync as existsSync82, mkdirSync as mkdirSync35, readFileSync as readFileSync96, rmSync as rmSync42, writeFileSync as writeFileSync32 } from "node:fs";
+import { existsSync as existsSync81, mkdirSync as mkdirSync35, readFileSync as readFileSync96, rmSync as rmSync42, writeFileSync as writeFileSync32 } from "node:fs";
 import { join as join214 } from "node:path";
 
 // src/cli/antigravity/init.ts
 init_git_layout();
 init_policy();
-import { existsSync as existsSync77, writeFileSync as writeFileSync26 } from "node:fs";
+import { existsSync as existsSync76, writeFileSync as writeFileSync26 } from "node:fs";
 import { join as join203 } from "node:path";
 function initAntigravity(io) {
   const cwd = io.cwd ?? process.cwd();
@@ -123579,7 +123628,7 @@ function initAntigravity(io) {
     return 1;
   }
   const configPath2 = join203(root, "squeal.config.json");
-  const writeConfig = !existsSync77(configPath2);
+  const writeConfig = !existsSync76(configPath2);
   let seed = { projects: [], notes: [], templates: [] };
   try {
     if (writeConfig) {
@@ -123619,7 +123668,7 @@ import { isAbsolute as isAbsolute33, join as join213, normalize as normalize11 }
 // src/cli/setup/block.ts
 init_git();
 import {
-  existsSync as existsSync78,
+  existsSync as existsSync77,
   lstatSync as lstatSync11,
   readFileSync as readFileSync89,
   readlinkSync as readlinkSync7,
@@ -123736,7 +123785,7 @@ function claudeReadsAgents(root) {
   );
   if (imports2) return true;
   for (let dir2 = root; ; dir2 = dirname83(dir2)) {
-    if (CLAUDE_FILES.some((file) => existsSync78(join204(dir2, file)))) return false;
+    if (CLAUDE_FILES.some((file) => existsSync77(join204(dir2, file)))) return false;
     if (dirname83(dir2) === dir2) return true;
   }
 }
@@ -123800,7 +123849,7 @@ function removeBlocks(root, paths = ROOT_FILES) {
   const edits = [];
   const seen2 = /* @__PURE__ */ new Set();
   for (const path of paths) {
-    if (!existsSync78(join204(root, path))) continue;
+    if (!existsSync77(join204(root, path))) continue;
     const real4 = resolved(root, path);
     if (seen2.has(real4)) continue;
     seen2.add(real4);
@@ -124207,7 +124256,7 @@ init_json();
 init_paths2();
 init_environment4();
 init_resolve();
-import { existsSync as existsSync79, readFileSync as readFileSync92, statSync as statSync49 } from "node:fs";
+import { existsSync as existsSync78, readFileSync as readFileSync92, statSync as statSync49 } from "node:fs";
 import { join as join206, posix as posix22, relative as relative37, sep as sep41 } from "node:path";
 var CONFIG_NAMES3 = [
   "jest.config.js",
@@ -124386,7 +124435,7 @@ function dirOf(path) {
 }
 function isFile6(path) {
   try {
-    return existsSync79(path) && statSync49(path).isFile();
+    return existsSync78(path) && statSync49(path).isFile();
   } catch {
     return false;
   }
@@ -124469,7 +124518,7 @@ function dirOf2(file) {
 // src/cli/setup/plan.ts
 init_policy2();
 init_json();
-import { existsSync as existsSync81 } from "node:fs";
+import { existsSync as existsSync80 } from "node:fs";
 import { join as join212 } from "node:path";
 
 // src/cli/setup/candidates.ts
@@ -124486,7 +124535,7 @@ init_git();
 init_git_layout();
 init_json();
 init_glob();
-import { existsSync as existsSync80, readFileSync as readFileSync94 } from "node:fs";
+import { existsSync as existsSync79, readFileSync as readFileSync94 } from "node:fs";
 import { join as join208, posix as posix23 } from "node:path";
 async function readRepoFacts(root) {
   const tracked = splitNul(await runGit(root, ["ls-files", "-z"]));
@@ -124605,7 +124654,7 @@ function matcher3(globs4) {
   return (path) => patterns.some((pattern2) => pattern2.test(path));
 }
 function dirExists(root, dir2) {
-  return existsSync80(join208(root, dir2));
+  return existsSync79(join208(root, dir2));
 }
 
 // src/cli/setup/build-outputs.ts
@@ -125295,7 +125344,7 @@ async function readPlan(root, options) {
   const pytest = pytestRunners(facts, policy, raw, options.env);
   const jest = await jestRunners(facts, policy, raw, options.env);
   const runners2 = readRunners(facts, nodeTest, pytest, jest);
-  const exists3 = existsSync81(join212(root, POLICY_FILE));
+  const exists3 = existsSync80(join212(root, POLICY_FILE));
   const slow = await slowCandidates(facts, policy, runners2);
   const config = {
     path: POLICY_FILE,
@@ -125366,7 +125415,7 @@ async function codexTrust(root, harnesses, options) {
 }
 async function configElsewhere(root) {
   for (const other of await otherWorktrees(root)) {
-    if (existsSync81(join212(other, POLICY_FILE))) return join212(other, POLICY_FILE);
+    if (existsSync80(join212(other, POLICY_FILE))) return join212(other, POLICY_FILE);
   }
   return null;
 }
@@ -125688,7 +125737,7 @@ function initClaudeCode(io) {
   }
   const lines = [];
   const configPath2 = join214(root, "squeal.config.json");
-  const writeConfig = !existsSync82(configPath2);
+  const writeConfig = !existsSync81(configPath2);
   lines.push(
     writeConfig ? "wrote squeal.config.json with every default policy key" : "kept squeal.config.json"
   );
@@ -125797,7 +125846,7 @@ function reason(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function readSettings(path) {
-  if (!existsSync82(path)) return { value: {}, text: null, indent: 2 };
+  if (!existsSync81(path)) return { value: {}, text: null, indent: 2 };
   const text3 = readFileSync96(path, "utf8");
   let value;
   try {
@@ -126635,7 +126684,7 @@ init_compare();
 init_reverse_index();
 
 // src/cli/status-at-after.ts
-import { existsSync as existsSync85 } from "node:fs";
+import { existsSync as existsSync84 } from "node:fs";
 init_git_layout();
 init_reverse_index();
 
@@ -126833,7 +126882,7 @@ init_policy2();
 init_slow();
 init_state2();
 init_store2();
-import { existsSync as existsSync83 } from "node:fs";
+import { existsSync as existsSync82 } from "node:fs";
 
 // src/cli/status-at-estimate-holder.ts
 init_user_config();
@@ -126945,7 +126994,7 @@ function sideWaits(storeRoot, sides) {
 var SIDE_NAMES = ["the commit worktree", "the working tree"];
 function waitOf(store, side, ids) {
   const { root, id, queued } = side;
-  if (root === null || id === null || queued.length === 0 || !existsSync83(root)) return null;
+  if (root === null || id === null || queued.length === 0 || !existsSync82(root)) return null;
   const view = groupView(readPolicy(root));
   const groups3 = new Map(queued.map((ref3) => [view.of(ref3).name, view.of(ref3)]));
   const waits2 = [];
@@ -127121,7 +127170,7 @@ function estimateOf(files6, durationOf2, width = runWidth(files6.length)) {
 }
 
 // src/cli/status-at-run-select.ts
-import { existsSync as existsSync84 } from "node:fs";
+import { existsSync as existsSync83 } from "node:fs";
 import { join as join216 } from "node:path";
 init_git();
 init_closure();
@@ -127177,8 +127226,8 @@ async function needsOf(input) {
     if (!("key" in file.at)) return null;
     for (const path of file.at.loads ?? []) {
       if (atCommit2.has(path) || input.copied?.has(path) === true) continue;
-      const generated = !atHead.has(path) && existsSync84(join216(root, path));
-      if (existsSync84(join216(tree, path)) || generated) return path;
+      const generated = !atHead.has(path) && existsSync83(join216(root, path));
+      if (existsSync83(join216(tree, path)) || generated) return path;
     }
     return null;
   };
@@ -127844,7 +127893,7 @@ function jsonAt(report4) {
 
 // src/cli/status-at-after.ts
 function idOf3(root) {
-  return existsSync85(root) ? worktreeIdFor(root) : worktreeIdOfRealPath(root);
+  return existsSync84(root) ? worktreeIdFor(root) : worktreeIdOfRealPath(root);
 }
 function reasonOf5(main2, queue) {
   if (queue.root === null) return () => null;
@@ -128019,7 +128068,7 @@ function copyTree(home, into, path, hidden, deadline) {
 
 // src/cli/status-at-run-child.ts
 import { spawn as spawn21 } from "node:child_process";
-import { existsSync as existsSync86, readFileSync as readFileSync97, renameSync as renameSync15, rmSync as rmSync43, writeFileSync as writeFileSync33 } from "node:fs";
+import { existsSync as existsSync85, readFileSync as readFileSync97, renameSync as renameSync15, rmSync as rmSync43, writeFileSync as writeFileSync33 } from "node:fs";
 import { availableParallelism as availableParallelism9 } from "node:os";
 import { join as join218 } from "node:path";
 
@@ -128302,7 +128351,7 @@ async function runInChild(run9) {
   clearTimeout(limit);
   if (pid !== void 0) await stopGroup(pid).catch(() => {
   });
-  if (!existsSync86(answer4)) {
+  if (!existsSync85(answer4)) {
     const error = `the run's process ended ${how2} with no answer`;
     const record2 = recordAt(progress2);
     return {
@@ -128805,12 +128854,12 @@ async function waitFor(daemons, tree, read7, bound, listed14 = []) {
 }
 
 // src/cli/status-at-now-ask.ts
-import { existsSync as existsSync88 } from "node:fs";
+import { existsSync as existsSync87 } from "node:fs";
 import { join as join221 } from "node:path";
 init_reverse_index();
 
 // src/cli/status-at-now.ts
-import { existsSync as existsSync87 } from "node:fs";
+import { existsSync as existsSync86 } from "node:fs";
 import { join as join220 } from "node:path";
 init_reverse_index();
 init_heartbeat();
@@ -128908,7 +128957,7 @@ async function keyedSide(input, how2 = {}) {
   });
 }
 async function listLate(input, now, refs2) {
-  const late = refs2.filter((ref3) => now.unlisted(ref3) && existsSync87(join220(input.root, ref3.path)));
+  const late = refs2.filter((ref3) => now.unlisted(ref3) && existsSync86(join220(input.root, ref3.path)));
   if (late.length === 0) return now;
   const paths = [...new Set(late.map((ref3) => ref3.path))];
   const keyed = await withStores(
@@ -128923,7 +128972,7 @@ async function listLate(input, now, refs2) {
   };
 }
 function unlisted3(root, ref3, why2) {
-  if (!existsSync87(join220(root, ref3.path))) return { state: "absent" };
+  if (!existsSync86(join220(root, ref3.path))) return { state: "absent" };
   return { state: "not determined", reason: why2 };
 }
 function select2(all2, paths) {
@@ -128931,7 +128980,7 @@ function select2(all2, paths) {
 }
 function sourcePaths2(root, listed14, paths) {
   return (paths ?? []).filter(
-    (path) => existsSync87(join220(root, path)) && !listed14.some((ref3) => selects3([path], ref3.path))
+    (path) => existsSync86(join220(root, path)) && !listed14.some((ref3) => selects3([path], ref3.path))
   );
 }
 function union2(selected2, sources) {
@@ -129005,7 +129054,7 @@ function unknownSide(place2, listed14, why2) {
   const { root } = place2;
   const refs2 = select2(listed14, place2.paths);
   const state = (ref3) => {
-    if (!existsSync88(join221(root, ref3.path))) return unlisted3(root, ref3, "");
+    if (!existsSync87(join221(root, ref3.path))) return unlisted3(root, ref3, "");
     return why2 === null ? { state: "no result", key: "", pending: "setting up" } : { state: "not determined", reason: why2 };
   };
   const ids = new Set(refs2.map(testFileId));
@@ -129147,10 +129196,10 @@ init_policy2();
 init_reverse_index();
 init_group_limits();
 init_slow();
-import { existsSync as existsSync89 } from "node:fs";
+import { existsSync as existsSync88 } from "node:fs";
 function workGroups(sides, seconds7) {
   const read7 = sides.map(
-    (side) => side.root === null || !existsSync89(side.root) ? null : bucketsOf(readPolicy(side.root), side)
+    (side) => side.root === null || !existsSync88(side.root) ? null : bucketsOf(readPolicy(side.root), side)
   );
   const counts = read7.map(
     (buckets, i3) => buckets === null ? null : countsOf7(buckets, sides[i3]?.done)
@@ -129219,7 +129268,7 @@ init_reverse_index();
 
 // src/cli/status-at-call-sides.ts
 import { randomUUID as randomUUID21 } from "node:crypto";
-import { existsSync as existsSync90 } from "node:fs";
+import { existsSync as existsSync89 } from "node:fs";
 import { join as join222 } from "node:path";
 init_git();
 init_reverse_index();
@@ -129272,7 +129321,7 @@ async function queueBoth(input, side) {
     }
     const ids = new Set(first2.map(testFileId));
     const extra = (await later).filter(
-      (ref3) => !ids.has(testFileId(ref3)) && existsSync90(join222(root, ref3.path))
+      (ref3) => !ids.has(testFileId(ref3)) && existsSync89(join222(root, ref3.path))
     );
     const files6 = [...first2, ...extra];
     const problem = read7.asked.kind === "unserved" ? read7.asked.problem : SETTING_UP;
@@ -130690,7 +130739,7 @@ init_marks();
 init_paths();
 
 // src/cli/stop-at.ts
-import { existsSync as existsSync91 } from "node:fs";
+import { existsSync as existsSync90 } from "node:fs";
 import { setTimeout as sleep30 } from "node:timers/promises";
 init_lock();
 init_git_layout();
@@ -130788,7 +130837,7 @@ async function stopOne(tree, short6, io, bounds) {
     await treeOrLockGone(tree, lockPath, bounds.lockMs);
   await removeCommitWorktree(tree, { note: (text3) => io.stdout(`${text3}
 `) });
-  if (existsSync91(tree)) {
+  if (existsSync90(tree)) {
     io.stdout(`The commit worktree at ${short6} is still there: ${tree}
 `);
     return 1;
@@ -130807,7 +130856,7 @@ function lockPathOf(tree, commonDir) {
 }
 async function treeOrLockGone(tree, path, ms2) {
   const deadline = Date.now() + ms2;
-  while (existsSync91(tree) && existsSync91(path) && !lockFree2(path)) {
+  while (existsSync90(tree) && existsSync90(path) && !lockFree2(path)) {
     if (Date.now() > deadline) return;
     await sleep30(50);
   }
@@ -131035,7 +131084,7 @@ async function endRunGroups(root) {
 
 // src/cli/stopped-mark.ts
 init_policy2();
-import { existsSync as existsSync92 } from "node:fs";
+import { existsSync as existsSync91 } from "node:fs";
 import { join as join225 } from "node:path";
 init_git_layout();
 init_events2();
@@ -131054,8 +131103,8 @@ async function leaveStoppedMark(root, at2, tree, untilStart = false, busyBoundMs
   const id = worktreeIdFor(root);
   const lockFile2 = lockFileFor(commonDir, id);
   const database = storePaths(commonDir).database;
-  if (!existsSync92(database)) {
-    if (!untilStart || !existsSync92(join225(root, POLICY_FILE))) return { error: null, untilStart };
+  if (!existsSync91(database)) {
+    if (!untilStart || !existsSync91(join225(root, POLICY_FILE))) return { error: null, untilStart };
     const error = createStore2(commonDir, busyBoundMs);
     if (error !== null) return { error, untilStart: false };
   }
@@ -131076,7 +131125,7 @@ async function clearStoppedMark(root, busyBoundMs) {
   const id = worktreeIdFor(root);
   const lockFile2 = lockFileFor(commonDir, id);
   try {
-    if (existsSync92(stopMarkFor(lockFile2)))
+    if (existsSync91(stopMarkFor(lockFile2)))
       withStopFileLock(lockFile2, () => removeStopFile(lockFile2));
   } catch (error) {
     return error.message;
@@ -131686,7 +131735,7 @@ function messageOf5(error) {
 
 // src/cli/status-at-refs.ts
 import { spawnSync as spawnSync5 } from "node:child_process";
-import { existsSync as existsSync93 } from "node:fs";
+import { existsSync as existsSync92 } from "node:fs";
 import { join as join226 } from "node:path";
 init_reverse_index();
 function unionRefs(now, at2, paths, sides, root, commit) {
@@ -131696,7 +131745,7 @@ function unionRefs(now, at2, paths, sides, root, commit) {
     if ([...all2.values()].some((ref3) => selects3([path], ref3.path))) continue;
     const readers = [...sides.now.get(path) ?? [], ...sides.at.get(path) ?? []];
     if (readers.length > 0) continue;
-    if (!sides.failed && (existsSync93(join226(root, path)) || inCommit(root, commit, path)))
+    if (!sides.failed && (existsSync92(join226(root, path)) || inCommit(root, commit, path)))
       unmatched2.push(path);
     else all2.set(testFileId({ project: "", path }), { project: "", path });
   }
@@ -131998,7 +132047,7 @@ function observedOf3(main2, ref3) {
 init_git();
 
 // src/cli/status-at.ts
-import { existsSync as existsSync94, realpathSync as realpathSync43 } from "node:fs";
+import { existsSync as existsSync93, realpathSync as realpathSync43 } from "node:fs";
 import { isAbsolute as isAbsolute36, relative as relative41, resolve as resolve55, sep as sep44 } from "node:path";
 init_version();
 init_git_layout();
@@ -132430,7 +132479,7 @@ async function locate2(args2, io) {
 }
 function worktreeOf(io) {
   const given2 = resolve55(io.cwd ?? process.cwd());
-  const cwd = existsSync94(given2) ? realpathSync43(given2) : given2;
+  const cwd = existsSync93(given2) ? realpathSync43(given2) : given2;
   const root = findWorktreeRoot(cwd);
   const commonDir = root === null ? null : resolveCommonDir(root);
   if (root === null || commonDir === null) return `${cwd} is not in a git worktree`;
@@ -132866,7 +132915,7 @@ function stopReruns(files6, args2, conditions, fromCwd) {
 import { execFileSync as execFileSync6 } from "node:child_process";
 import {
   chmodSync as chmodSync6,
-  existsSync as existsSync95,
+  existsSync as existsSync94,
   lstatSync as lstatSync13,
   mkdirSync as mkdirSync37,
   mkdtempSync as mkdtempSync15,
@@ -132947,7 +132996,7 @@ var MAX_BLOB_BYTES = 256 * 1024 * 1024;
 async function testSource(root, tests2, paths) {
   const unique2 = [...new Set(paths)];
   if (tests2 === null) {
-    const missing2 = new Set(unique2.filter((path) => !existsSync95(join228(root, path))));
+    const missing2 = new Set(unique2.filter((path) => !existsSync94(join228(root, path))));
     const written3 = unique2.filter((path) => !missing2.has(path));
     const none3 = { expected: /* @__PURE__ */ new Map(), links: /* @__PURE__ */ new Map() };
     return { from: root, absent: missing2, written: written3, ...none3, remove: () => {
@@ -133473,18 +133522,18 @@ function cpuTime2(cpus3) {
 }
 
 // src/core/ps/flags.ts
-import { existsSync as existsSync97 } from "node:fs";
+import { existsSync as existsSync96 } from "node:fs";
 import { dirname as dirname88, join as join234 } from "node:path";
 
 // src/core/daemon/codex-runtime-version.ts
-import { existsSync as existsSync96 } from "node:fs";
+import { existsSync as existsSync95 } from "node:fs";
 import { join as join230 } from "node:path";
 init_version();
 function codexRuntimeVersion(plugins, marketplace) {
   const installed2 = codexNewest(plugins, marketplace);
   if (installed2 === null) return null;
   const root = join230(plugins, "cache", marketplace, "squeal", installed2);
-  const fixed = existsSync96(join230(root, "hooks", "hooks.json")) && (existsSync96(join230(root, "seed")) || !existsSync96(join230(root, "dist", "cli", "squeal.mjs")));
+  const fixed = existsSync95(join230(root, "hooks", "hooks.json")) && (existsSync95(join230(root, "seed")) || !existsSync95(join230(root, "dist", "cli", "squeal.mjs")));
   if (!fixed) return installed2;
   const { current: current2, seed } = runtimeReadiness({
     pluginRoot: root,
@@ -134097,7 +134146,7 @@ function daemonFlags(c, d) {
     if (gone6 !== null) add3("root-gone", gone6, kill);
   }
   const bundle = bundleOf2(d.script);
-  if (!existsSync97(bundle)) add3("install-gone", `its bundle ${bundle} is missing`, stop2);
+  if (!existsSync96(bundle)) add3("install-gone", `its bundle ${bundle} is missing`, stop2);
   const older = olderOf(c, d, work);
   const life = phase === "serving" && work?.record != null ? lifeOf2(c, pid, work, work.record.heartbeatIntervalMs) : null;
   let state = life?.state ?? null;
@@ -134138,14 +134187,14 @@ function noLockBound(d) {
   return d.lockWaitMs + NO_LOCK_MARGIN_MS;
 }
 function rootGone(root) {
-  if (!existsSync97(root)) return `its root ${root} is missing`;
+  if (!existsSync96(root)) return `its root ${root} is missing`;
   let linked;
   try {
     linked = linkedWorktreeDir(root);
   } catch {
     return null;
   }
-  return linked !== null && !existsSync97(linked) ? `the gitdir ${linked} its .git names is missing` : null;
+  return linked !== null && !existsSync96(linked) ? `the gitdir ${linked} its .git names is missing` : null;
 }
 function bundleOf2(script2) {
   const at2 = script2.lastIndexOf("/dist/");
@@ -134332,7 +134381,7 @@ function within3(path, dir2) {
 }
 
 // src/core/ps/locks.ts
-import { existsSync as existsSync98 } from "node:fs";
+import { existsSync as existsSync97 } from "node:fs";
 import { join as join235 } from "node:path";
 init_paths();
 var PS_LOCKS_VERSION = 1;
@@ -134351,7 +134400,7 @@ function codeStoreOf(commonDir) {
   return join235(storePaths(commonDir).dir, "code.sqlite");
 }
 function lockedFile(source2, path) {
-  return { path, exists: existsSync98(path), holders: holdersFrom(source2, path) ?? null };
+  return { path, exists: existsSync97(path), holders: holdersFrom(source2, path) ?? null };
 }
 function renderLocks(locks, cwd) {
   if (locks.repositories.length === 0) {
@@ -135226,7 +135275,7 @@ function machineOf2(records, target, worktreeId) {
 }
 
 // src/core/ps/work.ts
-import { existsSync as existsSync99, statSync as statSync52 } from "node:fs";
+import { existsSync as existsSync98, statSync as statSync52 } from "node:fs";
 import { DatabaseSync as DatabaseSync14 } from "node:sqlite";
 init_policy2();
 init_harness_process();
@@ -135295,7 +135344,7 @@ function openReadOnly3(path) {
   try {
     const file = statSync52(path, { bigint: true });
     const wal = statSync52(`${path}-wal`, { throwIfNoEntry: false });
-    const held4 = wal !== void 0 && existsSync99(`${path}-shm`);
+    const held4 = wal !== void 0 && existsSync98(`${path}-shm`);
     if (!held4 && (wal?.size ?? 0) > 0)
       return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
     db = new DatabaseSync14(held4 ? path : immutableUrl(path), { readOnly: true });
@@ -135745,7 +135794,7 @@ import { relative as relative44, resolve as resolve57 } from "node:path";
 
 // src/core/reach/modules.ts
 init_lexer();
-import { existsSync as existsSync100, readFileSync as readFileSync100 } from "node:fs";
+import { existsSync as existsSync99, readFileSync as readFileSync100 } from "node:fs";
 import { join as join237, posix as posix30 } from "node:path";
 
 // src/core/reach/chains.ts
@@ -135882,7 +135931,7 @@ function moduleFacts(root, graph) {
     hasBytes(path) {
       let known4 = present3.get(path);
       if (known4 === void 0) {
-        known4 = existsSync100(join237(root, path));
+        known4 = existsSync99(join237(root, path));
         present3.set(path, known4);
       }
       return known4;
@@ -137471,7 +137520,7 @@ Usage: ${IMPACT_USAGE}
 init_machines_store();
 init_providers();
 init_settings();
-import { existsSync as existsSync101, realpathSync as realpathSync44 } from "node:fs";
+import { existsSync as existsSync100, realpathSync as realpathSync44 } from "node:fs";
 import { resolve as resolve58, sep as sep46 } from "node:path";
 var USAGE8 = "usage: squeal remote list [--json] | sleep [<worktree>] | prune [--dry-run]\n";
 var FAILED2 = 1;
@@ -137500,7 +137549,7 @@ function machinesOf(io, env) {
 function list2(io, env, json3) {
   const read7 = machinesOf(io, env);
   if (read7 === null) return FAILED2;
-  const rows = read7.machines.map((m) => ({ ...m, worktreeExists: existsSync101(m.worktreeRoot) }));
+  const rows = read7.machines.map((m) => ({ ...m, worktreeExists: existsSync100(m.worktreeRoot) }));
   if (json3) {
     io.stdout(`${JSON.stringify({ path: read7.path, machines: rows }, null, 2)}
 `);
@@ -137539,7 +137588,7 @@ async function sleep36(io, env, worktree, deps) {
   const read7 = machinesOf(io, env);
   if (read7 === null) return FAILED2;
   const asked = resolve58(io.cwd ?? process.cwd(), worktree ?? ".");
-  const path = existsSync101(asked) ? realpathSync44(asked) : asked;
+  const path = existsSync100(asked) ? realpathSync44(asked) : asked;
   const records = recordsOf(read7.machines, path);
   if (records.length === 0) {
     io.stderr(`squeal remote sleep: no remote machine is tracked for ${path}
@@ -137600,7 +137649,7 @@ async function daemonSleep(root, deps) {
 async function prune6(io, env, dryRun) {
   const read7 = machinesOf(io, env);
   if (read7 === null) return FAILED2;
-  const gone6 = read7.machines.filter((m) => !existsSync101(m.worktreeRoot));
+  const gone6 = read7.machines.filter((m) => !existsSync100(m.worktreeRoot));
   if (gone6.length === 0) {
     io.stdout("No tracked remote machine has a removed worktree.\n");
     return 0;
@@ -137681,7 +137730,7 @@ async function remoteTunnelCommand(args2, io, stdio = { stdin: process.stdin, st
 }
 
 // src/cli/remove.ts
-import { existsSync as existsSync102, lstatSync as lstatSync15, readdirSync as readdirSync54, readFileSync as readFileSync101, rmSync as rmSync46 } from "node:fs";
+import { existsSync as existsSync101, lstatSync as lstatSync15, readdirSync as readdirSync54, readFileSync as readFileSync101, rmSync as rmSync46 } from "node:fs";
 import { basename as basename46, dirname as dirname90, join as join238 } from "node:path";
 import { setTimeout as sleep37 } from "node:timers/promises";
 init_lock();
@@ -137722,7 +137771,7 @@ async function removeCommand(args2, io, options = {}) {
       failed7.push(`${path}: could not delete it (${code}); delete it by hand`);
     }
   };
-  if (existsSync102(storeDir)) {
+  if (existsSync101(storeDir)) {
     const worktrees = recordedWorktrees(commonDir);
     const stopped = [];
     for (const worktree of worktrees) if (await askToStop(worktree)) stopped.push(worktree.root);
@@ -137745,7 +137794,7 @@ ${stopped.map((r) => `  ${r}
       for (const lock2 of locks) lock2.release();
     }
   }
-  if (config && existsSync102(configPath2)) {
+  if (config && existsSync101(configPath2)) {
     const tracked = await isTracked(root, "squeal.config.json");
     remove2(
       configPath2,
@@ -137773,7 +137822,7 @@ ${removed.map((line) => `  ${line}
   io.stdout("Still there:\n");
   for (const line of failed7) io.stdout(`  ${line}
 `);
-  if (existsSync102(configPath2)) {
+  if (existsSync101(configPath2)) {
     io.stdout(
       `  ${configPath2}: the next Claude Code session here starts Squeal again. It is committed; delete it, or run squeal remove --config.
 `
@@ -137817,7 +137866,7 @@ async function isTracked(root, path) {
 }
 async function otherConfigs(root) {
   const out2 = await runGit(root, ["worktree", "list", "--porcelain", "-z"]).catch(() => "");
-  return splitNul(out2).filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`).map((field) => join238(field.slice("worktree ".length), "squeal.config.json")).filter((path) => existsSync102(path));
+  return splitNul(out2).filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`).map((field) => join238(field.slice("worktree ".length), "squeal.config.json")).filter((path) => existsSync101(path));
 }
 function recordedWorktrees(commonDir) {
   const store = openStore(commonDir, { create: false, busyTimeoutMs: CLI_SOCKET_TIMEOUT_MS });
@@ -137829,7 +137878,7 @@ function recordedWorktrees(commonDir) {
   }
 }
 async function askToStop(worktree) {
-  const socketPath = existsSync102(worktree.root) ? (await locateDaemon(worktree.root, CLI_SOCKET_TIMEOUT_MS, { record: worktree.daemon })).socketPath : worktree.daemon?.socketPath ?? socketPathFor(worktree.id);
+  const socketPath = existsSync101(worktree.root) ? (await locateDaemon(worktree.root, CLI_SOCKET_TIMEOUT_MS, { record: worktree.daemon })).socketPath : worktree.daemon?.socketPath ?? socketPathFor(worktree.id);
   const response = await askDaemon(socketPath, { type: "stop" }).catch(() => null);
   return response?.ok === true;
 }
@@ -137875,7 +137924,7 @@ async function askStoreProcessToStop(commonDir, file, deadline) {
   await askDaemon(socketPath, { type: "stop" }, timeoutMs).catch(() => null);
 }
 function tempDirs(commonDir, worktrees) {
-  if (!existsSync102(join238(storePaths(commonDir).dir, "repository-id"))) return [];
+  if (!existsSync101(join238(storePaths(commonDir).dir, "repository-id"))) return [];
   const uid = currentUid();
   const dirs = [];
   for (const { root } of worktrees) {
@@ -137884,7 +137933,7 @@ function tempDirs(commonDir, worktrees) {
     if (isPrivate(scratch.userDir, uid)) {
       const tmp = dirname90(scratch.tempDir);
       dirs.push(...entries2(tmp).filter((path) => isOwnDir(path, uid, `${scratch.tempDir}.old-`)));
-      if (existsSync102(scratch.tempDir)) dirs.push(scratch.tempDir);
+      if (existsSync101(scratch.tempDir)) dirs.push(scratch.tempDir);
     }
     const fallback2 = `${userTmpDir(uid)}-${key3}-`;
     dirs.push(...entries2(dirname90(fallback2)).filter((path) => isOwnDir(path, uid, fallback2)));
@@ -138821,13 +138870,13 @@ import { basename as basename47, dirname as dirname91, join as join240 } from "n
 // src/core/runner-host/remote/tree-git.ts
 init_tree_wire();
 import { spawn as spawn22 } from "node:child_process";
-import { existsSync as existsSync103 } from "node:fs";
+import { existsSync as existsSync102 } from "node:fs";
 import { join as join239 } from "node:path";
 var SHA1_HEX = /^[0-9a-f]{40}$/;
 async function materializeFromGit(root, entries3, writeEntry) {
   const done = /* @__PURE__ */ new Set();
   const gitDir = join239(root, ".git");
-  if (entries3.length === 0 || !existsSync103(gitDir)) return done;
+  if (entries3.length === 0 || !existsSync102(gitDir)) return done;
   const byBlob = /* @__PURE__ */ new Map();
   for (const entry4 of entries3) {
     if (!SHA1_HEX.test(entry4.blob)) continue;
@@ -139326,7 +139375,7 @@ init_low_priority();
 init_outlived();
 init_terminate();
 import { setTimeout as sleep38 } from "node:timers/promises";
-function markOf(options) {
+function markOf2(options) {
   const value = options.childEnv?.[CHILD_VARIABLE];
   if (value === void 0) return null;
   const colon = value.indexOf(":");
@@ -139335,7 +139384,7 @@ function markOf(options) {
 function hostWorkers(self = process.pid) {
   const children = /* @__PURE__ */ new Map();
   return async (options, run9) => {
-    const mark = markOf(options);
+    const mark = markOf2(options);
     if (mark === null || process.platform !== "linux") return run9();
     let own = children.get(mark.token);
     if (own === void 0) {
@@ -140202,7 +140251,7 @@ init_paths5();
 init_open2();
 init_lock();
 init_paths4();
-import { existsSync as existsSync105, statSync as statSync55 } from "node:fs";
+import { existsSync as existsSync104, statSync as statSync55 } from "node:fs";
 import { DatabaseSync as DatabaseSync15 } from "node:sqlite";
 init_test_pause();
 init_version();
@@ -140378,7 +140427,7 @@ var WriteStats = class {
 
 // src/core/store-process/writer.ts
 init_open2();
-import { existsSync as existsSync104 } from "node:fs";
+import { existsSync as existsSync103 } from "node:fs";
 import { fileURLToPath as fileURLToPath25 } from "node:url";
 import { Worker as Worker5 } from "node:worker_threads";
 init_connection();
@@ -140447,11 +140496,11 @@ function runJob(writer, job, schema) {
 function writerScript(module2 = new URL(import.meta.url)) {
   for (const name3 of ["./writer-thread.js", "./store-writer.mjs"]) {
     const script2 = fileURLToPath25(new URL(name3, module2));
-    if (existsSync104(script2)) return { script: script2 };
+    if (existsSync103(script2)) return { script: script2 };
   }
   const source2 = fileURLToPath25(new URL("./writer-thread.ts", module2));
   const loader = process.execArgv.some((arg) => arg === "--import" || arg.startsWith("--import="));
-  return loader && existsSync104(source2) ? { script: source2 } : null;
+  return loader && existsSync103(source2) ? { script: source2 } : null;
 }
 function startWriter(commonDir, script2, log) {
   return script2 === null ? inThread2(commonDir, log) : inWorker2(commonDir, script2, log);
@@ -140677,7 +140726,7 @@ async function startStoreProcess(options) {
     if ([...desks.values()].some((desk) => desk.leased) || queue.size > 0) lastClient = now();
     else if (now() - lastClient >= graceMs) void stop2("idle");
     if (fileSchema() > ready2.schema) void stop2("newer-schema");
-    if (!existsSync105(codeStorePath(commonDir))) void stop2("removed");
+    if (!existsSync104(codeStorePath(commonDir))) void stop2("removed");
   };
   const timer = setInterval(check3, Math.min(options.checkMs ?? CHECK_MS2, graceMs));
   const report4 = setInterval(() => {
@@ -140811,7 +140860,7 @@ import {
   chmodSync as chmodSync7,
   constants as constants16,
   copyFileSync as copyFileSync6,
-  existsSync as existsSync107,
+  existsSync as existsSync106,
   mkdtempSync as mkdtempSync16,
   readdirSync as readdirSync55,
   readFileSync as readFileSync104,
@@ -140821,10 +140870,10 @@ import { tmpdir as tmpdir19 } from "node:os";
 import { delimiter as delimiter11, join as join243 } from "node:path";
 
 // src/cli/antigravity/update.ts
-import { existsSync as existsSync106 } from "node:fs";
+import { existsSync as existsSync105 } from "node:fs";
 function antigravityUpdate(env) {
   const dir2 = antigravityPluginDir(env);
-  if (!existsSync106(dir2)) return { state: "absent" };
+  if (!existsSync105(dir2)) return { state: "absent" };
   const plugin = antigravityPlugin(env);
   if (plugin === null) {
     return {
@@ -141150,17 +141199,17 @@ function pluginDirs(env) {
   for (const { installPath } of claudeInstalls(join243(config, "plugins"), MARKETPLACE_NAME))
     if (installPath !== null) dirs.push(installPath);
   const cache2 = codexCache(env);
-  if (existsSync107(cache2)) {
+  if (existsSync106(cache2)) {
     for (const version2 of readdirSync55(cache2))
       if (!isAdapterRoot(join243(cache2, version2))) dirs.push(join243(cache2, version2));
   }
   const runtime = codexLauncherDir(env);
   if (runtime !== null) dirs.push(runtime);
   for (const packages of [packagesHome("pi", env), packagesHome("opencode", env)]) {
-    if (existsSync107(packages))
+    if (existsSync106(packages))
       for (const version2 of readdirSync55(packages)) dirs.push(join243(packages, version2));
   }
-  if (existsSync107(antigravityPluginDir(env))) dirs.push(antigravityPluginDir(env));
+  if (existsSync106(antigravityPluginDir(env))) dirs.push(antigravityPluginDir(env));
   return dirs;
 }
 function onPath5(name3, env) {
