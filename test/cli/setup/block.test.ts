@@ -39,6 +39,45 @@ describe("the block's text", () => {
     expect(nodeOnly).toContain("instead of running node:test.");
     expect(nodeOnly).toContain("run the node:test projects yourself instead.");
   });
+
+  it("is D4's text when no runner is detected, and unchanged by an absent Jest", () => {
+    expect(blockText({ vitest: false, nodeTest: false })).toBe(D4);
+    expect(blockText({ vitest: true, nodeTest: false, jest: false })).toBe(D4);
+  });
+});
+
+describe("the block's text with Jest projects (spec 028)", () => {
+  it("names Jest alone without Vitest", () => {
+    const text = blockText({ vitest: false, nodeTest: false, jest: true });
+    expect(text).toContain("Squeal runs the Jest tests after each edit.");
+    expect(text).toContain("instead of running Jest.");
+    expect(text).toContain("run the Jest projects yourself instead.");
+    expect(text).not.toContain("Vitest");
+  });
+
+  it("names Jest after pytest", () => {
+    const text = blockText({ vitest: false, nodeTest: false, pytest: true, jest: true });
+    expect(text).toContain("Squeal runs the pytest and Jest tests after each edit.");
+    expect(text).toContain("instead of running pytest or Jest.");
+    expect(text).toContain("run the pytest and Jest projects yourself instead.");
+  });
+
+  it("names Jest beside Vitest, with Vitest's command", () => {
+    const text = blockText({ vitest: true, nodeTest: false, jest: true });
+    expect(text).toContain("Squeal runs the Vitest and Jest tests after each edit.");
+    expect(text).toContain("run `npx vitest run` and the Jest projects instead.");
+  });
+
+  it("names every runner in their order", () => {
+    const text = blockText({ vitest: true, nodeTest: true, pytest: true, jest: true });
+    expect(text).toContain(
+      "Squeal runs the Vitest, node:test, pytest and Jest tests after each edit.",
+    );
+    expect(text).toContain("instead of running Vitest, node:test, pytest or Jest.");
+    expect(text).toContain(
+      "run `npx vitest run` and the node:test, pytest and Jest projects instead.",
+    );
+  });
 });
 
 describe("writing the block", () => {

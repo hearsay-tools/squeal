@@ -268,6 +268,7 @@ function applyChoices(
       vitest: plan.runners.vitest,
       nodeTest: plan.runners.nodeTest.length > 0,
       pytest: (plan.runners.pytest?.length ?? 0) > 0,
+      jest: (plan.runners.jest?.length ?? 0) > 0,
     };
     const edit = writeBlockFile(root, choices.block, blockText(runners));
     lines.push(

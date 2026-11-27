@@ -29,40 +29,32 @@ export interface BlockRunners {
   readonly nodeTest: boolean;
   /** Spec 007 D8: pytest projects are configured or seeded. Absent means none. */
   readonly pytest?: boolean;
-}
-
-export function blockText(runners: BlockRunners = { vitest: true, nodeTest: false }): string {
-  if (runners.pytest === true) return withPytest(runners);
-  const names = [
-    ...(runners.vitest || !runners.nodeTest ? ["Vitest"] : []),
-    ...(runners.nodeTest ? ["node:test"] : []),
-  ];
-  const fallback = names.includes("Vitest")
-    ? `\`npx vitest run\`${runners.nodeTest ? " and the node:test projects" : ""}`
-    : "the node:test projects yourself";
-  return [
-    `<!-- squeal:begin v${BLOCK_VERSION} (managed by Squeal setup; edits inside are replaced) -->`,
-    "## Tests",
-    "",
-    `Squeal runs the ${names.join(" and ")} tests after each edit. Before you say the work is done, run \`squeal status --wait 60000\` (or the command the SQUEAL messages name) and report its known failures and pending checks instead of running ${names.join(" or ")}. If you have seen no SQUEAL message in this session, run ${fallback} instead. Where this file's verification steps name a test command, they take precedence.`,
-    "<!-- squeal:end -->",
-    "",
-  ].join("\n");
+  /** Spec 028: Jest projects are configured or seeded. Absent means none. */
+  readonly jest?: boolean;
 }
 
 /**
- * Spec 007 D8: the block of a repository with pytest projects, naming them
- * where the block names node:test's, in the same sentences. Vitest is named
- * only when detected, as the daemon builds it (003 D7).
+ * D4's block, naming the detected runners in `DESCRIPTIONS`' order (spec
+ * 007 D8 for pytest, spec 028 for Jest); Vitest when none is detected.
+ * Without a SQUEAL message the agent runs `npx vitest run` and each other
+ * runner's projects, or only those projects without Vitest (003 D7).
  */
-function withPytest(runners: BlockRunners): string {
-  const names = [
-    ...(runners.vitest ? ["Vitest"] : []),
-    ...(runners.nodeTest ? ["node:test"] : []),
-    "pytest",
+export function blockText(runners: BlockRunners = { vitest: true, nodeTest: false }): string {
+  const detected: readonly [boolean | undefined, string][] = [
+    [runners.vitest, "Vitest"],
+    [runners.nodeTest, "node:test"],
+    [runners.pytest, "pytest"],
+    [runners.jest, "Jest"],
   ];
-  const projects = `the ${runners.nodeTest ? "node:test and pytest" : "pytest"} projects`;
-  const fallback = runners.vitest ? `\`npx vitest run\` and ${projects}` : `${projects} yourself`;
+  const found = detected.filter(([on]) => on === true).map(([, name]) => name);
+  const names = found.length > 0 ? found : ["Vitest"];
+  const others = names.filter((name) => name !== "Vitest");
+  const projects = `the ${listed(others, "and")} projects`;
+  const fallback = !names.includes("Vitest")
+    ? `${projects} yourself`
+    : others.length > 0
+      ? `\`npx vitest run\` and ${projects}`
+      : "`npx vitest run`";
   return [
     `<!-- squeal:begin v${BLOCK_VERSION} (managed by Squeal setup; edits inside are replaced) -->`,
     "## Tests",

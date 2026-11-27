@@ -306,3 +306,23 @@ describe("squeal setup and Jest (spec 028 D1.2)", { timeout: 60_000 }, () => {
     expect(config(root).jest).toEqual(declared);
   });
 });
+
+describe("squeal init --block on a Jest-only repository (spec 028)", { timeout: 60_000 }, () => {
+  it("writes a block that names Jest and not Vitest", async () => {
+    const files = {
+      "package.json": json({ name: "app", private: true }),
+      "jest.config.js": 'module.exports = { testEnvironment: "node" };\n',
+      "test/a.test.js": TEST,
+    };
+    const root = repo(30, files);
+    const { io, out } = capture(root, { ...harnessEnv(["claude"]), ...ENV });
+    const code = await main(["init", "--block", "CLAUDE.md"], io);
+    expect(out.stderr).toBe("");
+    expect(code).toBe(0);
+    const text = readFileSync(join(root, "CLAUDE.md"), "utf8");
+    expect(text).toContain("Squeal runs the Jest tests after each edit.");
+    expect(text).toContain("instead of running Jest.");
+    expect(text).toContain("run the Jest projects yourself instead.");
+    expect(text).not.toContain("Vitest");
+  });
+});
