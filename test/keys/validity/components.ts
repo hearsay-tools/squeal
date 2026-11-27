@@ -6,8 +6,8 @@ import type { CaseKind } from "./case.js";
  * names the code deciding what it stores or accepts, the files out of
  * esbuild's reach compared as text, and the case kinds whose outputs it
  * answers for. A component fires when its entries' emitted code, its text
- * files or the lock lines of the packages its bundle imports differ from
- * the last release's.
+ * files or the lock lines of the packages its bundle imports, and of the
+ * packages it runs on, differ from the last release's.
  */
 
 export interface Component {
@@ -21,6 +21,12 @@ export interface Component {
   readonly texts: readonly { readonly path: string; readonly suffixes: readonly string[] }[];
   /** The kinds whose differing outputs ask to raise its version. */
   readonly kinds: readonly CaseKind[];
+  /**
+   * Packages its cases run on that its bundle need not import, such as the
+   * runner it adapts: their lock moves fire it too, so the last release runs
+   * on its own lock.
+   */
+  readonly runsOn?: readonly string[];
 }
 
 export const FORMAT_FILE = "src/core/keys/key-format.ts";
@@ -42,6 +48,9 @@ export const COMPONENTS: readonly Component[] = [
     entries: "entries/vitest.ts",
     texts: [],
     kinds: ["adapter:vitest"],
+    // Row 025-25: Vitest and the Vite it loads. A release whose adapter
+    // breaks on the candidate's Vite (025-23) must run on its own lock.
+    runsOn: ["vitest"],
   },
   {
     name: "node:test",
