@@ -52,3 +52,26 @@ it("maps 0.1.393's start message to the short one, naming the same CLI", () => {
   const codex = "node --disable-warning=ExperimentalWarning '/p/dist/cli/squeal.mjs'";
   expect(wordingPass(`${head}\n\n${old(codex)}`, 7)).toBe(`${head}\n\n${primer(codex)}`);
 });
+
+// Row 025-32 (review 0.1.657-r2): a settled Codex registration whose line names the skill's
+// path in backticks. The CLI is read from one line, so the capture cannot start at the path's
+// closing backtick and run on to the old primer's "do not run".
+it("reads the CLI from one line when a backticked skill path comes before the old primer", () => {
+  const codex = "node --disable-warning=ExperimentalWarning '/p/dist/cli/squeal.mjs'";
+  const old = `Squeal runs this repository's Vitest tests in the background after each edit; do not run Vitest to learn whether your edits broke something. Wait only when you need a result: \`${codex} status --wait 60000\` before you finish. Squeal does not cover typecheck, build or any other test suite: run those yourself.`;
+  const head = [
+    "SQUEAL · registered at revision 3",
+    "Revision 3 · <sha> + 0: 31 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 3.",
+    "Known failures: 0; all 7 test files current",
+    "The squeal skill is at `/p/skills/squeal/SKILL.md`.",
+  ].join("\n");
+  expect(wordingPass(`${head}\n\n${old}`, 7)).toBe(
+    [
+      "SQUEAL · registered at revision 3",
+      "Known failures: 0; all 7 test files are current (run on the files as they are now).",
+      "The squeal skill is at `/p/skills/squeal/SKILL.md`.",
+      "",
+      primer(codex),
+    ].join("\n"),
+  );
+});

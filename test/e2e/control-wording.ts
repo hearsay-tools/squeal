@@ -20,11 +20,15 @@ function startMessage(text: string, command: string): string {
 /** The meaning of "current" the hooks say in place (R1). */
 const DEFINED = "(run on the files as they are now)";
 
-/** The CLI a hook text names: its `Full output:` line's, else its first command, else `squeal`. */
+/**
+ * The CLI a hook text names: its `Full output:` line's, else its first command, else `squeal`.
+ * A command is read from one line, so a capture cannot start at a closing backtick and run on
+ * into the next paragraph (row 025-32, review 0.1.657-r2).
+ */
 function commandOf(text: string): string {
   return (
     /^Full output: (.+?) why /m.exec(text)?.[1] ??
-    /`([^`]+?) (?:status|run|retry|code|lint)\b/.exec(text)?.[1] ??
+    /`([^`\n]+?) (?:status|run|retry|code|lint)\b/.exec(text)?.[1] ??
     "squeal"
   );
 }
