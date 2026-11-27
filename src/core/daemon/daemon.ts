@@ -643,19 +643,27 @@ class Daemon {
     if (prune === undefined) return;
     const signal = this.#pruning.signal;
     const env = this.options.env ?? process.env;
-    void import("../runner-host/remote/prune.js")
-      .then(({ pruneRemovedWorktrees }) =>
+    void Promise.all([
+      import("../runner-host/remote/prune.js"),
+      import("../runner-host/remote/presence.js"),
+    ])
+      .then(([{ pruneRemovedWorktrees }, { machineScope }]) =>
         pruneRemovedWorktrees({
           ...prune,
           env,
           signal,
+          // Review 0.1.658 N1: only this host's and mount namespace's records, or those of none.
+          scope: machineScope(),
           report: (outcome) => {
             const { id, provider, worktreeRoot } = outcome.record;
-            const what = `remote machine ${id} (${provider}) of removed worktree ${worktreeRoot}`;
+            const of = outcome.kind === "kept" ? "worktree" : "removed worktree";
+            const what = `remote machine ${id} (${provider}) of ${of} ${worktreeRoot}`;
             this.#log(
               outcome.kind === "failed"
                 ? `${what} not released, still tracked: ${outcome.error}`
-                : `${what} released`,
+                : outcome.kind === "kept"
+                  ? `${what} kept: ${outcome.reason}`
+                  : `${what} released`,
             );
           },
         }),

@@ -173,8 +173,9 @@ function commandMachine(
     ...(acquired.state === undefined ? {} : { state: acquired.state }),
     wake: (signal) => call("wake", machineEnv(), signal),
     sleep: () => call("sleep", machineEnv()),
-    release: (reason: ReleaseReason) =>
-      call("release", machineEnv({ SQUEAL_RELEASE_REASON: reason })),
+    // Review 0.1.658 B1: an abort kills the release hook's process group.
+    release: (reason: ReleaseReason, signal?: AbortSignal) =>
+      call("release", machineEnv({ SQUEAL_RELEASE_REASON: reason }), signal),
   };
 }
 

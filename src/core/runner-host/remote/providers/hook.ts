@@ -24,6 +24,10 @@ export function runHook(run: HookRun): Promise<string> {
   const [program, ...args] = run.argv;
   const what = `the ${run.name} hook (${program ?? ""})`;
   return new Promise((resolve, reject) => {
+    if (run.signal?.aborted === true) {
+      reject(new Error(`${what} was aborted`));
+      return;
+    }
     let child: ChildProcess;
     try {
       child = spawn(program ?? "", args, {

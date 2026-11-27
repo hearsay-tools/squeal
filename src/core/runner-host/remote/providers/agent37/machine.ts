@@ -214,9 +214,9 @@ export function agent37Machine(parts: MachineParts): RemoteMachine {
       await git?.sync(parts.ssh, signal);
     },
     sleep,
-    release: async (reason: ReleaseReason) => {
+    release: async (reason: ReleaseReason, signal?: AbortSignal) => {
       if (reason === "worktree-removed") {
-        await api.remove(id);
+        await api.remove(id, signal);
         return;
       }
       // Idle or the daemon's exit: asleep, kept for a fast wake. One already gone needs nothing.

@@ -5,6 +5,7 @@ import {
   readMachines,
   updateMachine,
 } from "../core/runner-host/remote/machines-store.js";
+import { machineScope, worktreePresence } from "../core/runner-host/remote/presence.js";
 import type { MachineRecord } from "../core/runner-host/remote/provider.js";
 import { pruneRemovedWorktrees, reattach } from "../core/runner-host/remote/prune.js";
 import type { AbsolutePath } from "../core/types/common.js";
@@ -72,7 +73,8 @@ function machinesOf(io: CliIo, env: NodeJS.ProcessEnv): Machines | null {
 function list(io: CliIo, env: NodeJS.ProcessEnv, json: boolean): number {
   const read = machinesOf(io, env);
   if (read === null) return FAILED;
-  const rows = read.machines.map((m) => ({ ...m, worktreeExists: existsSync(m.worktreeRoot) }));
+  const presence = new Map(read.machines.map((m) => [m, worktreePresence(m.worktreeRoot)]));
+  const rows = read.machines.map((m) => ({ ...m, worktreeExists: presence.get(m) === "present" }));
   if (json) {
     io.stdout(`${JSON.stringify({ path: read.path, machines: rows }, null, 2)}\n`);
     return 0;
@@ -86,7 +88,8 @@ function list(io: CliIo, env: NodeJS.ProcessEnv, json: boolean): number {
       `${m.id}  ${m.provider}  ${m.status}  ${m.worktreeRoot}${m.worktreeExists ? "" : " (worktree removed)"}  last used ${new Date(m.lastUsedAt).toISOString()}`,
   );
   // Row 026-37 (#301): machines of removed worktrees bill until released.
-  const orphans = rows.filter((m) => !m.worktreeExists).length;
+  // Review 0.1.658 B2: only a path confirmed missing counts, as the prune counts it.
+  const orphans = read.machines.filter((m) => presence.get(m) === "gone").length;
   const tail =
     orphans === 0
       ? ""
@@ -189,6 +192,13 @@ async function daemonSleep(
     : `the daemon of ${root} did not finish the sleep`;
 }
 
+/** Review 0.1.658 N1: ` (recorded in <scope>)` for a record of another host or mount namespace. */
+function foreign(record: MachineRecord): string {
+  return record.scope === undefined || record.scope === machineScope()
+    ? ""
+    : ` (recorded in ${record.scope})`;
+}
+
 async function prune(io: CliIo, env: NodeJS.ProcessEnv, dryRun: boolean): Promise<number> {
   const what = (r: MachineRecord) =>
     `${r.id} (${r.provider}) of removed worktree ${r.worktreeRoot}`;
@@ -198,9 +208,14 @@ async function prune(io: CliIo, env: NodeJS.ProcessEnv, dryRun: boolean): Promis
     report: (outcome) => {
       if (outcome.kind === "failed") {
         io.stderr(`${what(outcome.record)}: not released, still tracked: ${outcome.error}\n`);
+      } else if (outcome.kind === "kept") {
+        const r = outcome.record;
+        io.stdout(
+          `kept ${r.id} (${r.provider}) of worktree ${r.worktreeRoot}: ${outcome.reason}\n`,
+        );
       } else {
         const verb = outcome.kind === "released" ? "released" : "would release";
-        io.stdout(`${verb} ${what(outcome.record)}\n`);
+        io.stdout(`${verb} ${what(outcome.record)}${foreign(outcome.record)}\n`);
       }
     },
   });

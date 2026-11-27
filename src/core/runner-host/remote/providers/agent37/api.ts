@@ -118,10 +118,10 @@ export class Agent37Api {
     return this.#instance("POST", path, await this.#retrying("POST", path));
   }
 
-  /** Deletes the instance; false when it was already gone (`404`). */
-  async remove(id: string): Promise<boolean> {
+  /** Deletes the instance; false when it was already gone (`404`). Review 0.1.658 B1: `signal` ends the call. */
+  async remove(id: string, signal?: AbortSignal): Promise<boolean> {
     const path = `/v1/instances/${id}`;
-    const answer = await this.#call("DELETE", path);
+    const answer = await this.#call("DELETE", path, undefined, CALL_MS, signal);
     if (answer.status === 404) return false;
     this.#ok("DELETE", path, answer);
     return true;

@@ -1,5 +1,6 @@
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../types/common.js";
 import type { RemotePlaces } from "./bundle.js";
+import { machineScope } from "./presence.js";
 import type { SshTarget } from "./ssh.js";
 
 /*
@@ -64,8 +65,12 @@ export interface RemoteMachine {
   wake(signal?: AbortSignal): Promise<void>;
   /** Notifies the provider after the daemon closes idle SSH channels so compute may sleep. */
   sleep(): Promise<void>;
-  /** Lifecycle release: `idle` sleeps, `daemon-exit` sleeps or detaches, `worktree-removed` destroys. */
-  release(reason: ReleaseReason): Promise<void>;
+  /**
+   * Lifecycle release: `idle` sleeps, `daemon-exit` sleeps or detaches, `worktree-removed` destroys.
+   * Review 0.1.658 B1: `signal` ends the provider's own work (its HTTP call, its hook process)
+   * where it stands; the release then rejects, and the machine's fate is unknown.
+   */
+  release(reason: ReleaseReason, signal?: AbortSignal): Promise<void>;
   /**
    * Review 0.1.619 B3 (spec 026 D8.4): on a machine whose tree keeps `.git`
    * (`hasGitRepository`), whether that `.git` was found at the worktree's
@@ -102,6 +107,12 @@ export interface MachineRecord {
   readonly places: RemotePlaces;
   readonly capabilities: MachineCapabilities;
   readonly state?: unknown;
+  /**
+   * Review 0.1.658 N1: the filesystem scope the record was written in
+   * (`presence.ts`, `machineScope`). The automatic prune trusts
+   * `worktreeRoot` only in that scope. Absent: written before the field.
+   */
+  readonly scope?: string;
   readonly status: MachineStatus;
   readonly createdAt: EpochMs;
   readonly lastUsedAt: EpochMs;
@@ -144,6 +155,7 @@ export function recordOf(
     places: machine.places,
     capabilities: machine.capabilities,
     ...(machine.state === undefined ? {} : { state: machine.state }),
+    scope: machineScope(),
     status: "awake",
     createdAt: now,
     lastUsedAt: now,

@@ -1,9 +1,9 @@
-import { existsSync } from "node:fs";
 import type { RemoteSleepOutcome } from "../../types/daemon.js";
 import { RemoteRefusal } from "./connect.js";
 import { type DiskProbe, judgeDisk } from "./disk-check.js";
 import type { LaneSleep } from "./lane.js";
 import { forgetMachine, recordMachine, updateMachine } from "./machines-store.js";
+import { worktreePresence } from "./presence.js";
 import { type MachineRequest, type RemoteMachine, recordOf } from "./provider.js";
 import { providerOf } from "./providers/index.js";
 import { idleSleepMinutesOf, type RemoteLane } from "./settings.js";
@@ -455,7 +455,15 @@ export function shareMachine(options: ShareOptions): MachineShare {
     if (at !== null) await closeMaster(m.ssh, at);
     // B2: a slow machine whose removal failed is removed now, and forgotten once it is.
     // Row 026-37 (#301): so is one whose worktree is already gone, as `squeal remote prune` would.
-    const removed = unremoved === m || !existsSync(request.worktreeRoot);
+    // Review 0.1.658 B2: gone only when confirmed missing; a path that cannot be checked keeps it.
+    // N1: this machine is this daemon's, acquired and recorded here, so its path is of this scope.
+    const presence = worktreePresence(request.worktreeRoot);
+    if (presence === "unknown") {
+      request.log(
+        `remote machine ${m.id} kept: its worktree ${request.worktreeRoot} could not be checked`,
+      );
+    }
+    const removed = unremoved === m || presence === "gone";
     let gone = false;
     try {
       await m.release(removed ? "worktree-removed" : "daemon-exit");
@@ -463,7 +471,12 @@ export function shareMachine(options: ShareOptions): MachineShare {
     } catch (error) {
       request.log(`remote machine ${m.id} not released: ${String(error)}`);
     }
-    track(() => (gone ? forgetMachine(key, env) : updateMachine(key, { status: "detached" }, env)));
+    // B3: forget only this machine's record; a replacement written meanwhile stays.
+    track(() =>
+      gone
+        ? forgetMachine(key, env, { id: m.id })
+        : updateMachine(key, { status: "detached" }, env),
+    );
   };
 
   return {
