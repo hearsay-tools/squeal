@@ -1,9 +1,18 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { buildDist } from "../../src/harness/build.js";
 import { CLAUDE_CODE_PLUGIN } from "../../src/harness/claude-code/build.js";
-import { daemonSuite, SLOW, spawnCli, waitReady } from "../daemon/helpers.js";
+import {
+  createFixtureRepo,
+  type FixtureRepo,
+  SLOW,
+  spawnCli,
+  stopStrays,
+  waitFor,
+  waitReady,
+} from "../daemon/helpers.js";
+import { testBuildDir } from "../daemon/strays.js";
 import { TEST_VERSION } from "../fixed-version.js";
 import { observeMetafile } from "../helpers/build-inputs.js";
 import { recorded } from "./helpers.js";
@@ -17,16 +26,15 @@ import { type CountedRun, listed, runCounted, type Work } from "./work-per-call-
  * on any machine, and the test asserts no time. A count below its limit
  * passes and asks for the limit to be lowered.
  *
- * The hooks and `status` run from a plugin build of the sources, so an edit
- * to a hook counts before `dist` is rebuilt; the daemon is the CLI built from
- * the same sources, at the same version. The store holds a small project's
- * results like `latency.test.ts`'s: 50 test files of 10 checks beside the
- * scheduler fixture's 5, every one passing after one full run, with the
- * default config (complexity on). With it, PreToolUse runs the 61
- * statements the research counted on the benchmark's 500-file project; with
- * the code features off it runs half as many. The file calls leave out the
- * ones Node's own code makes (`work-counter.mjs`), 2 per call of the
- * research's counts.
+ * The hooks, `status` and the daemon run from a plugin build of the sources,
+ * as users run them, so an edit to a hook counts before `dist` is rebuilt.
+ * The store holds a small project's results like `latency.test.ts`'s: 50
+ * test files of 10 checks beside the scheduler fixture's 5, every one passing
+ * after one full run, with the default config and its complexity count done.
+ * Then PreToolUse, PostToolBatch and `status` run the statements the research
+ * counted on the benchmark's 500-file project at 0.1.653 (61, 117 and 69).
+ * The file calls leave out the ones Node's own code makes
+ * (`work-counter.mjs`), 2 per call of the research's counts.
  */
 
 /** Generated test files beside the fixture's, and checks in each. */
@@ -39,19 +47,26 @@ const CHECKS_PER_FILE = 10;
  * for work the change means to add.
  */
 const LIMITS: Readonly<Record<string, { readonly sql: number; readonly files: number }>> = {
-  "session-start": { sql: 180, files: 29 },
-  "user-prompt-submit": { sql: 110, files: 15 },
+  "session-start": { sql: 182, files: 29 },
+  "user-prompt-submit": { sql: 114, files: 15 },
   "pre-tool-use (Edit)": { sql: 61, files: 12 },
-  "post-tool-batch (Read)": { sql: 113, files: 14 },
+  "post-tool-batch (Read)": { sql: 117, files: 14 },
   stop: { sql: 146, files: 16 },
   "stop-slow": { sql: 0, files: 5 },
   "waiter (-p)": { sql: 0, files: 4 },
-  status: { sql: 67, files: 20 },
-  "status --json": { sql: 67, files: 20 },
+  status: { sql: 69, files: 20 },
+  "status --json": { sql: 69, files: 20 },
   "session-end": { sql: 68, files: 15 },
 };
 
-const suite = daemonSuite();
+/** Each test's fixture, its daemons stopped and its files removed after the test. */
+const repos: FixtureRepo[] = [];
+afterEach(async () => {
+  for (const repo of repos.splice(0)) {
+    await stopStrays(repo.root);
+    repo.cleanup();
+  }
+}, SLOW.timeout);
 
 function generated(): Record<string, string> {
   const files: Record<string, string> = {};
@@ -67,27 +82,41 @@ function generated(): Record<string, string> {
   return files;
 }
 
+/** The plugin build: under the test run's directory, so the teardown finds a daemon left running. */
+let built = "";
 let dist = "";
 beforeAll(async () => {
-  dist = mkdtempSync("/tmp/sq-work-dist-");
-  // At the daemon's version (`buildCli`), so a hook does not replace it as older (row 011-425).
+  built = testBuildDir(expect.getState().testPath);
+  dist = join(built, "dist");
   observeMetafile(await buildDist(CLAUDE_CODE_PLUGIN, dist, TEST_VERSION));
 }, SLOW.timeout);
-afterAll(() => rmSync(dist, { recursive: true, force: true }), SLOW.timeout);
+afterAll(() => rmSync(built, { recursive: true, force: true }), SLOW.timeout);
 
 describe("work per hook and status call against a real daemon", () => {
   it(
     "stays within the committed SQL statement and file call limits",
     async ({ annotate }) => {
-      const repo = suite.fixture(generated());
+      const repo = createFixtureRepo({ files: generated() });
+      repos.push(repo);
       const cli = (args: readonly string[]) =>
-        spawnCli(suite.cli, args, { cwd: repo.root, env: repo.env });
+        spawnCli(join(dist, "cli/squeal.mjs"), args, { cwd: repo.root, env: repo.env });
       const start = cli(["start"]);
       expect((await start.exited).code, start.stderr()).toBe(0);
       await waitReady(repo);
       const all = cli(["run", "--all", "--wait"]);
       const ran = await all.exited;
       expect(ran.code, `${all.stdout()}${all.stderr()}`).toBe(0);
+      // A complexity count still running changes what the hooks read: count after it ends.
+      await waitFor(
+        async () => {
+          const shown = cli(["status", "--json"]);
+          await shown.exited;
+          const code = (JSON.parse(shown.stdout()) as { code?: { counting?: unknown } }).code;
+          return code !== undefined && code.counting === undefined;
+        },
+        60_000,
+        "the complexity count",
+      );
 
       // Only what a hook reads from Claude Code and the system: no developer config or HOME.
       const home = join(repo.runtimeDir, "home");
