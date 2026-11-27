@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.660";
+  if (true) return "0.1.663";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -141185,21 +141185,31 @@ async function storeProcessCommand(args2, io) {
   const sink2 = logSinkAt(storeProcessLogPath(commonDir, "code"));
   const log = sink2 ?? ((line) => io.stderr(`${daemonLogLine(line)}
 `));
-  const started2 = await startStoreProcess({
-    commonDir,
-    log,
-    writer: writerScript(),
-    ...io.env === void 0 ? {} : { env: io.env }
-  });
-  if (typeof started2 === "string") return started2 === "lost-lock" ? 0 : 1;
-  const stop2 = () => void started2.stop();
+  let stopNow = null;
+  let signalled = false;
+  const stop2 = () => {
+    signalled = true;
+    stopNow?.();
+  };
   process.once("SIGTERM", stop2);
   process.once("SIGINT", stop2);
-  const end = await started2.ended;
-  process.off("SIGTERM", stop2);
-  process.off("SIGINT", stop2);
-  log(`store process: ended (${end})`);
-  return 0;
+  try {
+    const started2 = await startStoreProcess({
+      commonDir,
+      log,
+      writer: writerScript(),
+      ...io.env === void 0 ? {} : { env: io.env }
+    });
+    if (typeof started2 === "string") return started2 === "lost-lock" ? 0 : 1;
+    stopNow = () => void started2.stop();
+    if (signalled) stopNow();
+    const end = await started2.ended;
+    log(`store process: ended (${end})`);
+    return 0;
+  } finally {
+    process.off("SIGTERM", stop2);
+    process.off("SIGINT", stop2);
+  }
 }
 
 // src/cli/update.ts
