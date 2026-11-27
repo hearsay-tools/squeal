@@ -53,8 +53,8 @@ updating Git's index. That is the verified disagreement.
 **read in source code, 0.1.658.** The existing
 `test/runner-host/remote/providers/agent37-git-sync.test.ts` covers commits,
 tags, branch switches, detached HEAD and deleted-but-unstaged files. It does
-not cover a staged rename with unchanged HEAD. Spec 026's status amendment of
-2026-11-24 explicitly defines freshness in terms of HEAD, branch/detached state
+not cover a staged rename with unchanged HEAD. Spec 026's status amendment
+explicitly defines freshness in terms of HEAD, branch/detached state
 and tags. Staged-index fidelity needs a clarified contract, not merely a claim
 that the current predicate implements its documented inputs incorrectly.
 
@@ -99,6 +99,11 @@ reproduction ran. Squeal `checks` reported 582/2334 files current before edits;
 that is environment context, not a suite pass. Biome formatting of the probe
 reported the docs path ignored (exit 1, no files processed); no lint pass is
 claimed.
+
+Final path check: `squeal status --wait 60000` with this findings file and the
+probe path returned exit 3: neither path belongs to a test file's closure.
+It reported 0 known failures and 1748/2334 files not current (unknown).
+The direct research probe above supplies the behavioral evidence.
 
 ## Decision and open evidence
 
