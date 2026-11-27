@@ -64,7 +64,22 @@ describe("a moved package (risk 9)", SLOW, () => {
       expect(result.installed).toBe(false);
       expect(failures(result, release())).toEqual([
         expect.stringMatching(
-          /^NODE_TEST_ADAPTER_VERSION .*: the packages its entries import, or esbuild, moved since .* the last release must be bundled from its own lock/,
+          /^NODE_TEST_ADAPTER_VERSION .*: the packages its entries import or run on, or esbuild, moved since .* the last release must be bundled from its own lock/,
+        ),
+      ]);
+    }
+  });
+
+  it("fires the Vitest adapter when Vitest or the Vite it loads moved, which its entries do not import (025-25)", async () => {
+    for (const overlay of [
+      lock((text) => renamed(text, "vite", "8.4.0", "8.99.0")),
+      lock((text) => renamed(text, "vitest", "5.0.3", "5.99.0")),
+    ]) {
+      const result = await compare(overlay, [], ROOT, null);
+      expect(fired(result)).toEqual(["vitest"]);
+      expect(failures(result, release())).toEqual([
+        expect.stringMatching(
+          /^VITEST_ADAPTER_VERSION .*: the packages its entries import or run on/,
         ),
       ]);
     }
