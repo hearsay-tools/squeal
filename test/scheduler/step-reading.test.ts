@@ -34,9 +34,9 @@ const TICK_MS = 7;
 /** A reading that stays its own, by the frames that took it (`taker < caller`). */
 const OWN_READS: Readonly<Record<string, RegExp>> = {
   // A tier's start: its row's and its run's start time, a slow tier's too.
-  "tier start": /^(newTier|executeTier|startTier|SlowTier\.#select)\b/,
+  "tier start": /^(newTier|executeTier|startTier|slow-tier#select)\b/,
   // A row's write: the ledger's commit, a result's last-used time, the pool wait's end.
-  "row write": /^(Ledger\.#write|acceptedAt|PoolWaits\.(granted|refused))\b/,
+  "row write": /^(ledger#write|acceptedAt|PoolWaits\.(granted|refused))\b/,
   // The lock's label for a lock watcher: when the turn's operation began.
   "lock label": /^Mutex\.relabel\b/,
   // The wake loop's bookkeeping: a wake's arm, the runner part's bound, the slow release's arm.
@@ -54,18 +54,29 @@ const PASSING =
 /**
  * The names of the first two source frames that took a reading, innermost
  * first; an anonymous frame (a callback) is named by the function around it.
+ * A private method is named by its file, `ledger#write`: V8 prints
+ * `Ledger.#write`, Vite 8.4.0's module runner `#write` (row 025-30).
  */
 function takers(stack: string): string[] {
   const names: string[] = [];
   for (const line of stack.split("\n").slice(1)) {
     const frame = line.trim().replace(/^at /, "");
     if (!frame.includes("/src/core/")) continue;
-    const name = frame.includes(" (") ? frame.slice(0, frame.indexOf(" (")) : frame;
+    const name = privateByFile(
+      frame.includes(" (") ? frame.slice(0, frame.indexOf(" (")) : frame,
+      frame,
+    );
     if (PASSING.test(name) || name.startsWith("/")) continue;
     names.push(name);
     if (names.length === 2) break;
   }
   return names;
+}
+
+function privateByFile(name: string, frame: string): string {
+  const method = /^(?:async )?(?:[\w$]+\.)?(#[\w$]+)$/.exec(name)?.[1];
+  const file = /\/([^/]+)\.[cm]?[jt]s:\d/.exec(frame)?.[1];
+  return method === undefined || file === undefined ? name : `${file}${method}`;
 }
 
 /**
