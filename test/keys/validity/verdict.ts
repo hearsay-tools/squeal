@@ -272,7 +272,7 @@ function componentFailures(c: Comparison, alarm: Alarm, ref: string, raise: Rais
   if (alarm.dependencies !== null && !c.installed) {
     const { baseline, candidate } = alarm.dependencies;
     out.push(
-      `${name}: the packages its entries import or run on, or esbuild, moved since ${ref} ` +
+      `${name}: the packages its entries import, or esbuild, moved since ${ref} ` +
         `(${only(baseline, candidate).join(", ")} -> ${only(candidate, baseline).join(", ")}): ` +
         "the last release must be bundled from its own lock; install it into its tree (risk 9)",
     );
