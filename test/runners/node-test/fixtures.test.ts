@@ -203,8 +203,14 @@ describe("node:test fixtures under the current Node", () => {
       expect(run.killed).toBe(true);
       expect(run.code === null || run.code !== 0).toBe(true);
       expect(wrapper(run, "test:complete", pass)?.data.details?.passed).toBe(true);
-      expect(wrapper(run, "test:complete", busy)).toBeUndefined();
-      expect(run.events.some((e) => e.type === "test:summary")).toBe(false);
+      // Row 011-432: `node --test`'s own SIGTERM handler may end the loop's file as failed and
+      // write the summary before it exits; the loop never ends as passed, nor summed without it.
+      const loop = wrapper(run, "test:complete", busy);
+      expect(loop === undefined || loop.data.details?.passed === false, JSON.stringify(loop)).toBe(
+        true,
+      );
+      const summary = run.events.some((e) => e.type === "test:summary");
+      expect(summary && loop === undefined, "a summary without the loop's end").toBe(false);
     });
 
     it("reports duplicate names as separate checks on separate lines", SLOW, async () => {

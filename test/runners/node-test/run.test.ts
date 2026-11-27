@@ -55,7 +55,7 @@ const names = (results: readonly { check: { fullName: string }; outcome: string 
  */
 function busyLoop(logDir: string) {
   const log = JSON.parse(readFileSync(join(logDir, "run.json"), "utf8")) as {
-    files: { exit: unknown; completed: boolean }[];
+    files: { exit: unknown; completed: boolean; signalled: boolean }[];
   };
   const read = (name: string) =>
     existsSync(join(logDir, name)) ? readFileSync(join(logDir, name), "utf8") : "(none)";
@@ -116,11 +116,12 @@ describe("runNodeTest", () => {
     const { report } = await run({ project: edge, files: tier, timeoutMs: 8_000, logDir });
     expect(performance.now() - started).toBeLessThan(8_000 + 2_000 + 5_000);
     expect(report.end).toBe("timed-out");
-    // Row 011-99: once on CI (Node 22.19, 8060 ms) the loop's stream was whole at the deadline,
-    // "0 of 2". Not reproduced: Node's SIGTERM handler exits before its reporter writes, and
-    // libuv learns of the child's exit after its own SIGTERM. The premise names how it ended.
+    // Row 011-99: on CI the loop's stream was once whole after the deadline, exit 1: `node
+    // --test` handled its test child's death and wrote the summary. Row 011-432: the premise is
+    // that the deadline signalled the loop, as `run.json` records; a stream whole only by the
+    // signal is not completed (row 011-230), which `completedFiles` below shows.
     const { loop, why } = busyLoop(logDir);
-    expect(loop?.completed, `the busy loop's stream is whole: ${why}`).toBe(false);
+    expect(loop?.signalled, `the deadline did not signal the busy loop: ${why}`).toBe(true);
     expect(report.failure).toMatch(/deadline of 8000 ms passed with 1 of 2 test files unfinished/);
     expect(report.completedFiles).toEqual(files(edge, "test/pass.test.ts"));
     expect(names(report.results)).toEqual(["passes: pass"]);
@@ -160,7 +161,8 @@ describe("runNodeTest", () => {
       logDir,
     });
     const { loop, next: queued, why } = busyLoop(logDir);
-    expect(loop?.completed, `the busy loop ended before the deadline: ${why}`).toBe(false);
+    // Row 011-432: a stream made whole by the signal is still the loop running at the deadline.
+    expect(loop?.signalled, `the busy loop ended before the deadline: ${why}`).toBe(true);
     expect(queued).toEqual({ ...queued, exit: null, completed: false });
     expect(existsSync(join(logDir, "stdout-1.log"))).toBe(false);
     expect(report).toMatchObject({ end: "timed-out", completedFiles: [], results: [] });
