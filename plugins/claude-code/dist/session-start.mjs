@@ -9764,24 +9764,60 @@ function commitLine(report) {
   return count2 > 0 && files2.length > 0 ? { ...line, notDetermined: { count: count2, files: files2 } } : line;
 }
 
+// src/core/scheduler/checkpoint-progress.ts
+function checkpointMetaKey(worktreeId) {
+  return worktreeMetaKey("checkpoint", worktreeId);
+}
+function readCheckpointProgress(store, worktreeId) {
+  const raw = store.meta.get(checkpointMetaKey(worktreeId));
+  if (raw === null || !raw.startsWith("{")) return null;
+  try {
+    const value = JSON.parse(raw);
+    const numbers = [value.revision, value.startedAt, value.done, value.total];
+    if (typeof value.id !== "string" || numbers.some((n) => typeof n !== "number")) return null;
+    if (value.kind !== "run-all" && value.kind !== "baseline") return null;
+    const owed2 = value.owed;
+    const lists = owed2 === void 0 ? [] : [owed2.ids, owed2.remaining, owed2.strict];
+    if (!lists.every(Array.isArray)) return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
+
 // src/core/scheduler/narrow-asks-row.ts
 function narrowAsksMetaKey(worktreeId) {
   return worktreeMetaKey("narrowAsks", worktreeId);
 }
+var NO_REQUESTS = { narrow: /* @__PURE__ */ new Map(), commit: /* @__PURE__ */ new Map(), requested: /* @__PURE__ */ new Set() };
 function publishedNarrowAsks(store, worktreeId, daemonStartedAt) {
-  const out = /* @__PURE__ */ new Map();
+  return publishedLaneRequests(store, worktreeId, daemonStartedAt).narrow;
+}
+function publishedLaneRequests(store, worktreeId, daemonStartedAt) {
   const raw = store.meta.get(narrowAsksMetaKey(worktreeId));
-  if (raw === null) return out;
+  if (raw === null) return NO_REQUESTS;
   try {
-    const { at, asks } = JSON.parse(raw);
-    if (typeof at !== "number" || at < daemonStartedAt || !Array.isArray(asks)) return out;
-    for (const entry2 of asks) {
-      if (!Array.isArray(entry2)) continue;
-      const [id, key] = entry2;
-      if (typeof id === "string" && typeof key === "string") out.set(id, key);
+    const row = JSON.parse(raw);
+    if (typeof row.at !== "number" || row.at < daemonStartedAt || !Array.isArray(row.asks)) {
+      return NO_REQUESTS;
     }
+    const names3 = Array.isArray(row.requested) ? row.requested : [];
+    return {
+      narrow: entriesOf5(row.asks),
+      commit: entriesOf5(row.commit),
+      requested: new Set(names3.filter((name2) => typeof name2 === "string"))
+    };
   } catch {
-    return out;
+    return NO_REQUESTS;
+  }
+}
+function entriesOf5(value) {
+  const out = /* @__PURE__ */ new Map();
+  if (!Array.isArray(value)) return out;
+  for (const entry2 of value) {
+    if (!Array.isArray(entry2)) continue;
+    const [id, key] = entry2;
+    if (typeof id === "string" && typeof key === "string") out.set(id, key);
   }
   return out;
 }
@@ -10000,10 +10036,10 @@ function classOf(row, own = NO_STATES) {
   if (unkeyed || own.count === 0 || has("unknown")) return "unknown";
   return has("stale") ? "stale" : "current";
 }
-function notCurrentOf(states, keys, openFiles = /* @__PURE__ */ new Set()) {
+function notCurrentOf(states, keys, openFiles = /* @__PURE__ */ new Set(), onRequest = /* @__PURE__ */ new Set()) {
   const testFileCounts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  const testFilesByPhase = { running: 0, queued: 0 };
-  const testsByPhase = { running: 0, queued: 0 };
+  const testFilesByPhase = { running: 0, queued: 0, onRequest: 0 };
+  const testsByPhase = { running: 0, queued: 0, onRequest: 0 };
   for (const row of keys) {
     const id = testFileId(row.testFile);
     const own = states.files.get(id)?.checks;
@@ -10011,15 +10047,22 @@ function notCurrentOf(states, keys, openFiles = /* @__PURE__ */ new Set()) {
     testFileCounts[fileClass]++;
     if (fileClass !== "pending") continue;
     const running = openFiles.has(id) || row.pending === "running" || own?.running === true;
-    testFilesByPhase[running ? "running" : "queued"]++;
+    testFilesByPhase[running ? "running" : onRequest.has(id) ? "onRequest" : "queued"]++;
   }
   const filePhase = new Map(keys.map((row) => [testFileId(row.testFile), row.pending]));
   for (const [id, file] of states.files) {
     const phases = phasesOf(file.pending.test, openFiles.has(id), filePhase.get(id));
-    testsByPhase.queued += phases.queued;
+    testsByPhase[onRequest.has(id) ? "onRequest" : "queued"] += phases.queued;
     testsByPhase.running += phases.running;
   }
-  return { testFileCounts, testFilesByPhase, testsByPhase };
+  return {
+    testFileCounts,
+    testFilesByPhase: withoutZero(testFilesByPhase),
+    testsByPhase: withoutZero(testsByPhase)
+  };
+}
+function withoutZero({ onRequest, ...phases }) {
+  return onRequest === 0 ? phases : { ...phases, onRequest };
 }
 
 // src/core/slow/slot.ts
@@ -10277,16 +10320,49 @@ function groupTiersOf(store, worktreeId, keys, lanes) {
 function requestedOf(store, worktreeId, keys, lanes) {
   const none3 = { asked: 0, outside: [] };
   if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => none3;
-  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  const asked = daemon === null ? /* @__PURE__ */ new Map() : publishedNarrowAsks(store, worktreeId, daemon.startedAt);
+  const isAsked = askedAtKey(store, worktreeId);
   const pending = keys.filter((row) => row.pending !== null);
-  const isAsked = (row) => row.key !== null && asked.get(testFileId(row.testFile)) === row.key;
   return (at, inLane) => {
     if (!heldUntilAsked(at)) return none3;
     const lane = pending.filter((row) => inLane(row.testFile));
     const outside = lane.filter((row) => !isAsked(row)).map((row) => row.testFile);
     return { asked: lane.length - outside.length, outside };
   };
+}
+function askedAtKey(store, worktreeId) {
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  const asked = daemon === null ? /* @__PURE__ */ new Map() : publishedNarrowAsks(store, worktreeId, daemon.startedAt);
+  return (row) => row.key !== null && asked.get(testFileId(row.testFile)) === row.key;
+}
+var NONE_ON_REQUEST = /* @__PURE__ */ new Set();
+function onRequestFiles(store, worktreeId, keys, policy) {
+  if (policy === null || !groupTextsShown(policy)) return NONE_ON_REQUEST;
+  const view = groupView(policy);
+  const held = view.groups.filter(
+    (group) => group.index !== null && group.select.kind === "tests" && heldUntilAsked(group.at)
+  );
+  if (held.length === 0 || runAllOpen(store, worktreeId)) return NONE_ON_REQUEST;
+  const { narrow, commit, requested } = laneRequestsOf(store, worktreeId);
+  const waiting = new Set(held.filter((group) => !requested.has(group.name)));
+  if (waiting.size === 0) return NONE_ON_REQUEST;
+  const atKey2 = (asks, id, key) => key !== null && asks.get(id) === key;
+  const out = /* @__PURE__ */ new Set();
+  for (const row of keys) {
+    if (row.pending !== "queued" || !waiting.has(view.of(row.testFile))) continue;
+    const id = testFileId(row.testFile);
+    if (atKey2(narrow, id, row.key) || atKey2(commit, id, row.key)) continue;
+    out.add(id);
+  }
+  return out;
+}
+function laneRequestsOf(store, worktreeId) {
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  return daemon === null ? { narrow: /* @__PURE__ */ new Map(), commit: /* @__PURE__ */ new Map(), requested: /* @__PURE__ */ new Set() } : publishedLaneRequests(store, worktreeId, daemon.startedAt);
+}
+function runAllOpen(store, worktreeId) {
+  const progress = readCheckpointProgress(store, worktreeId);
+  if (progress?.kind !== "run-all") return false;
+  return progress.owed !== void 0 || store.checkpoints.get(progress.id)?.end === null;
 }
 var NAMED_OUTSIDE = 3;
 function classifyGroupFilesOf(states, keys, inLane) {
@@ -10312,10 +10388,10 @@ function readCommitLine(store, worktreeId) {
 }
 
 // src/core/state/header-part.ts
-function headerPart(states, keys, policy, isSlow, openFiles) {
-  return headerPartOf(worktreeStatesOf(states), keys, policy, isSlow, openFiles);
+function headerPart(states, keys, policy, isSlow, openFiles, onRequest = /* @__PURE__ */ new Set()) {
+  return headerPartOf(worktreeStatesOf(states), keys, policy, isSlow, openFiles, onRequest);
 }
-function headerPartOf(states, keys, policy, isSlow, openFiles) {
+function headerPartOf(states, keys, policy, isSlow, openFiles, onRequest = /* @__PURE__ */ new Set()) {
   const view = policy === null ? null : slowPolicyView(policy);
   const slow = isSlow ?? view?.isSlow;
   const shown = policy !== null && groupTextsShown(policy);
@@ -10323,10 +10399,11 @@ function headerPartOf(states, keys, policy, isSlow, openFiles) {
   const owned = slowLane !== void 0 && (slowLane.testFiles > 0 || keys.length === 0 || !shown);
   return {
     policy,
+    onRequest,
     view,
     counted: countStates2(states),
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
-    notCurrent: notCurrentOf(states, keys, openFiles),
+    notCurrent: notCurrentOf(states, keys, openFiles, onRequest),
     listed: keys.length > 0,
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
     ...owned ? { slowLane } : {},
@@ -10451,7 +10528,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     store,
     worktreeId,
     keys,
-    (policy) => headerPart(states, keys, policy, isSlow, openFiles)
+    (policy, onRequest) => headerPart(states, keys, policy, isSlow, openFiles, onRequest)
   );
 }
 function headerWith(store, worktreeId, keys, partOf) {
@@ -10465,7 +10542,7 @@ function headerWith(store, worktreeId, keys, partOf) {
   const lane = awaiting ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
   const root = store.worktrees.get(worktreeId)?.root;
   const policy = root === void 0 ? null : readPolicy(root);
-  const part = partOf(policy);
+  const part = partOf(policy, onRequestFiles(store, worktreeId, keys, policy));
   const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } = part.counted;
   const optimizerOff = readOptimizerOff(store, worktreeId);
   const runnerPartPending = !covers(refinedRevision, revision);
@@ -12090,14 +12167,14 @@ function readYieldRow(raw, daemonStartedAt) {
       tiers: new Map(
         Object.entries(row.tiers).filter((e) => isYield(e[1]))
       ),
-      ended: new Map(entriesOf5(row.ended).filter((e) => isCount2(e[1]))),
+      ended: new Map(entriesOf6(row.ended).filter((e) => isCount2(e[1]))),
       endedFiles: new Map(
-        entriesOf5(row.endedFiles).filter((e) => isRefs(e[1]))
+        entriesOf6(row.endedFiles).filter((e) => isRefs(e[1]))
       ),
       last: isLastYield(row.last) ? row.last : null,
-      lanes: new Map(entriesOf5(row.lanes).filter((e) => isRef2(e[1]))),
+      lanes: new Map(entriesOf6(row.lanes).filter((e) => isRef2(e[1]))),
       overruns: new Map(
-        entriesOf5(row.overruns).filter((e) => isOverrun(e[1]))
+        entriesOf6(row.overruns).filter((e) => isOverrun(e[1]))
       ),
       at: row.at
     };
@@ -12105,7 +12182,7 @@ function readYieldRow(raw, daemonStartedAt) {
     return NO_YIELD_ROW;
   }
 }
-function entriesOf5(value) {
+function entriesOf6(value) {
   return typeof value === "object" && value !== null ? Object.entries(value) : [];
 }
 function isCount2(value) {
@@ -13245,7 +13322,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.651";
+  if (true) return "0.1.652";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

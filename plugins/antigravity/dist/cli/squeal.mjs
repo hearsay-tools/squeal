@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.651";
+  if (true) return "0.1.652";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -6452,10 +6452,10 @@ function classOf(row2, own = NO_STATES) {
   if (unkeyed || own.count === 0 || has3("unknown")) return "unknown";
   return has3("stale") ? "stale" : "current";
 }
-function notCurrentOf(states, keys, openFiles2 = /* @__PURE__ */ new Set()) {
+function notCurrentOf(states, keys, openFiles2 = /* @__PURE__ */ new Set(), onRequest = /* @__PURE__ */ new Set()) {
   const testFileCounts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  const testFilesByPhase = { running: 0, queued: 0 };
-  const testsByPhase = { running: 0, queued: 0 };
+  const testFilesByPhase = { running: 0, queued: 0, onRequest: 0 };
+  const testsByPhase = { running: 0, queued: 0, onRequest: 0 };
   for (const row2 of keys) {
     const id = testFileId(row2.testFile);
     const own = states.files.get(id)?.checks;
@@ -6463,15 +6463,22 @@ function notCurrentOf(states, keys, openFiles2 = /* @__PURE__ */ new Set()) {
     testFileCounts[fileClass]++;
     if (fileClass !== "pending") continue;
     const running2 = openFiles2.has(id) || row2.pending === "running" || own?.running === true;
-    testFilesByPhase[running2 ? "running" : "queued"]++;
+    testFilesByPhase[running2 ? "running" : onRequest.has(id) ? "onRequest" : "queued"]++;
   }
   const filePhase = new Map(keys.map((row2) => [testFileId(row2.testFile), row2.pending]));
   for (const [id, file] of states.files) {
     const phases = phasesOf(file.pending.test, openFiles2.has(id), filePhase.get(id));
-    testsByPhase.queued += phases.queued;
+    testsByPhase[onRequest.has(id) ? "onRequest" : "queued"] += phases.queued;
     testsByPhase.running += phases.running;
   }
-  return { testFileCounts, testFilesByPhase, testsByPhase };
+  return {
+    testFileCounts,
+    testFilesByPhase: withoutZero(testFilesByPhase),
+    testsByPhase: withoutZero(testsByPhase)
+  };
+}
+function withoutZero({ onRequest, ...phases }) {
+  return onRequest === 0 ? phases : { ...phases, onRequest };
 }
 var noPending, counted, isRunning, NO_STATES;
 var init_file_class = __esm({
@@ -20857,32 +20864,59 @@ var init_text3 = __esm({
 function narrowAsksMetaKey(worktreeId) {
   return worktreeMetaKey("narrowAsks", worktreeId);
 }
-function publishNarrowAsks(store, worktreeId, asks, at2) {
+function publishNarrowAsks(store, worktreeId, asks, at2, more2 = {}) {
   const key3 = narrowAsksMetaKey(worktreeId);
-  if (asks.length === 0) store.meta.delete(key3);
-  else store.meta.set(key3, JSON.stringify({ at: at2, asks }));
+  const commit = more2.commit ?? [];
+  const requested = more2.requested ?? [];
+  if (asks.length + commit.length + requested.length === 0) {
+    store.meta.delete(key3);
+    return;
+  }
+  const row2 = {
+    at: at2,
+    asks,
+    ...commit.length === 0 ? {} : { commit },
+    ...requested.length === 0 ? {} : { requested }
+  };
+  store.meta.set(key3, JSON.stringify(row2));
 }
 function publishedNarrowAsks(store, worktreeId, daemonStartedAt) {
-  const out2 = /* @__PURE__ */ new Map();
+  return publishedLaneRequests(store, worktreeId, daemonStartedAt).narrow;
+}
+function publishedLaneRequests(store, worktreeId, daemonStartedAt) {
   const raw = store.meta.get(narrowAsksMetaKey(worktreeId));
-  if (raw === null) return out2;
+  if (raw === null) return NO_REQUESTS;
   try {
-    const { at: at2, asks } = JSON.parse(raw);
-    if (typeof at2 !== "number" || at2 < daemonStartedAt || !Array.isArray(asks)) return out2;
-    for (const entry4 of asks) {
-      if (!Array.isArray(entry4)) continue;
-      const [id, key3] = entry4;
-      if (typeof id === "string" && typeof key3 === "string") out2.set(id, key3);
+    const row2 = JSON.parse(raw);
+    if (typeof row2.at !== "number" || row2.at < daemonStartedAt || !Array.isArray(row2.asks)) {
+      return NO_REQUESTS;
     }
+    const names9 = Array.isArray(row2.requested) ? row2.requested : [];
+    return {
+      narrow: entriesOf6(row2.asks),
+      commit: entriesOf6(row2.commit),
+      requested: new Set(names9.filter((name3) => typeof name3 === "string"))
+    };
   } catch {
-    return out2;
+    return NO_REQUESTS;
+  }
+}
+function entriesOf6(value) {
+  const out2 = /* @__PURE__ */ new Map();
+  if (!Array.isArray(value)) return out2;
+  for (const entry4 of value) {
+    if (!Array.isArray(entry4)) continue;
+    const [id, key3] = entry4;
+    if (typeof id === "string" && typeof key3 === "string") out2.set(id, key3);
   }
   return out2;
 }
+var NO_REQUESTS;
 var init_narrow_asks_row = __esm({
   "src/core/scheduler/narrow-asks-row.ts"() {
     "use strict";
     init_store();
+    NO_REQUESTS = { narrow: /* @__PURE__ */ new Map(), commit: /* @__PURE__ */ new Map(), requested: /* @__PURE__ */ new Set() };
   }
 });
 
@@ -21377,16 +21411,48 @@ function groupTiersOf(store, worktreeId, keys, lanes) {
 function requestedOf2(store, worktreeId, keys, lanes) {
   const none3 = { asked: 0, outside: [] };
   if (!lanes.some((lane) => heldUntilAsked(lane.head.at))) return () => none3;
-  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  const asked = daemon === null ? /* @__PURE__ */ new Map() : publishedNarrowAsks(store, worktreeId, daemon.startedAt);
+  const isAsked = askedAtKey(store, worktreeId);
   const pending = keys.filter((row2) => row2.pending !== null);
-  const isAsked = (row2) => row2.key !== null && asked.get(testFileId(row2.testFile)) === row2.key;
   return (at2, inLane) => {
     if (!heldUntilAsked(at2)) return none3;
     const lane = pending.filter((row2) => inLane(row2.testFile));
     const outside2 = lane.filter((row2) => !isAsked(row2)).map((row2) => row2.testFile);
     return { asked: lane.length - outside2.length, outside: outside2 };
   };
+}
+function askedAtKey(store, worktreeId) {
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  const asked = daemon === null ? /* @__PURE__ */ new Map() : publishedNarrowAsks(store, worktreeId, daemon.startedAt);
+  return (row2) => row2.key !== null && asked.get(testFileId(row2.testFile)) === row2.key;
+}
+function onRequestFiles(store, worktreeId, keys, policy) {
+  if (policy === null || !groupTextsShown(policy)) return NONE_ON_REQUEST;
+  const view = groupView(policy);
+  const held4 = view.groups.filter(
+    (group) => group.index !== null && group.select.kind === "tests" && heldUntilAsked(group.at)
+  );
+  if (held4.length === 0 || runAllOpen(store, worktreeId)) return NONE_ON_REQUEST;
+  const { narrow: narrow2, commit, requested } = laneRequestsOf(store, worktreeId);
+  const waiting2 = new Set(held4.filter((group) => !requested.has(group.name)));
+  if (waiting2.size === 0) return NONE_ON_REQUEST;
+  const atKey = (asks, id, key3) => key3 !== null && asks.get(id) === key3;
+  const out2 = /* @__PURE__ */ new Set();
+  for (const row2 of keys) {
+    if (row2.pending !== "queued" || !waiting2.has(view.of(row2.testFile))) continue;
+    const id = testFileId(row2.testFile);
+    if (atKey(narrow2, id, row2.key) || atKey(commit, id, row2.key)) continue;
+    out2.add(id);
+  }
+  return out2;
+}
+function laneRequestsOf(store, worktreeId) {
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  return daemon === null ? { narrow: /* @__PURE__ */ new Map(), commit: /* @__PURE__ */ new Map(), requested: /* @__PURE__ */ new Set() } : publishedLaneRequests(store, worktreeId, daemon.startedAt);
+}
+function runAllOpen(store, worktreeId) {
+  const progress2 = readCheckpointProgress(store, worktreeId);
+  if (progress2?.kind !== "run-all") return false;
+  return progress2.owed !== void 0 || store.checkpoints.get(progress2.id)?.end === null;
 }
 function classifyGroupFilesOf(states, keys, inLane) {
   const files6 = /* @__PURE__ */ new Map();
@@ -21415,7 +21481,7 @@ function readCommitLine(store, worktreeId) {
   const report4 = newestCommitReport(store.meta, worktreeId);
   return report4 === null ? void 0 : commitLine(report4);
 }
-var NAMED_OUTSIDE;
+var NONE_ON_REQUEST, NAMED_OUTSIDE;
 var init_groups = __esm({
   "src/core/state/groups.ts"() {
     "use strict";
@@ -21424,21 +21490,23 @@ var init_groups = __esm({
     init_check_groups();
     init_policy2();
     init_reverse_index();
+    init_checkpoint_progress();
     init_narrow_asks_row();
     init_slow();
     init_stop_wait();
     init_scheduler();
     init_file_class();
     init_slow2();
+    NONE_ON_REQUEST = /* @__PURE__ */ new Set();
     NAMED_OUTSIDE = 3;
   }
 });
 
 // src/core/state/header-part.ts
-function headerPart(states, keys, policy, isSlow, openFiles2) {
-  return headerPartOf(worktreeStatesOf(states), keys, policy, isSlow, openFiles2);
+function headerPart(states, keys, policy, isSlow, openFiles2, onRequest = /* @__PURE__ */ new Set()) {
+  return headerPartOf(worktreeStatesOf(states), keys, policy, isSlow, openFiles2, onRequest);
 }
-function headerPartOf(states, keys, policy, isSlow, openFiles2) {
+function headerPartOf(states, keys, policy, isSlow, openFiles2, onRequest = /* @__PURE__ */ new Set()) {
   const view = policy === null ? null : slowPolicyView(policy);
   const slow = isSlow ?? view?.isSlow;
   const shown3 = policy !== null && groupTextsShown(policy);
@@ -21446,10 +21514,11 @@ function headerPartOf(states, keys, policy, isSlow, openFiles2) {
   const owned = slowLane !== void 0 && (slowLane.testFiles > 0 || keys.length === 0 || !shown3);
   return {
     policy,
+    onRequest,
     view,
     counted: countStates2(states),
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
-    notCurrent: notCurrentOf(states, keys, openFiles2),
+    notCurrent: notCurrentOf(states, keys, openFiles2, onRequest),
     listed: keys.length > 0,
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
     ...owned ? { slowLane } : {},
@@ -21569,7 +21638,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     store,
     worktreeId,
     keys,
-    (policy) => headerPart(states, keys, policy, isSlow, openFiles2)
+    (policy, onRequest) => headerPart(states, keys, policy, isSlow, openFiles2, onRequest)
   );
 }
 function readHeaderOf(store, worktreeId, states, keys, openFiles2) {
@@ -21577,7 +21646,7 @@ function readHeaderOf(store, worktreeId, states, keys, openFiles2) {
     store,
     worktreeId,
     keys,
-    (policy) => headerPartOf(states, keys, policy, void 0, openFiles2)
+    (policy, onRequest) => headerPartOf(states, keys, policy, void 0, openFiles2, onRequest)
   );
 }
 function headerWith(store, worktreeId, keys, partOf2) {
@@ -21591,7 +21660,7 @@ function headerWith(store, worktreeId, keys, partOf2) {
   const lane = awaiting2 ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
   const root = store.worktrees.get(worktreeId)?.root;
   const policy = root === void 0 ? null : readPolicy(root);
-  const part2 = partOf2(policy);
+  const part2 = partOf2(policy, onRequestFiles(store, worktreeId, keys, policy));
   const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } = part2.counted;
   const optimizerOff = readOptimizerOff(store, worktreeId);
   const runnerPartPending = !covers(refinedRevision, revision);
@@ -58620,7 +58689,7 @@ function remoteSummaryLine(input) {
   const last = state === "awake" || state === "degraded-disk" ? Math.max(...proven2) : null;
   return [
     `${who}: ${state}${reason2 === void 0 ? "" : ` (${reason2})`}`,
-    `${listText2(input.lanes)} runs of ${input.runners.join(", ")}`,
+    `${listText3(input.lanes)} runs of ${input.runners.join(", ")}`,
     `planning ${input.planning}`,
     `environment ${input.environmentMode}${keyed === void 0 ? "" : ` (${keyed})`}`,
     ...last === null || !Number.isFinite(last) ? [] : [`proven at ${new Date(last).toISOString()}`]
@@ -58629,7 +58698,7 @@ function remoteSummaryLine(input) {
 function reasonOf4(reason2) {
   return reason2 === void 0 || reason2 === "" ? {} : { reason: reason2 };
 }
-function listText2(parts3) {
+function listText3(parts3) {
   return parts3.length < 2 ? parts3.join("") : `${parts3.slice(0, -1).join(", ")} and ${parts3[parts3.length - 1]}`;
 }
 var REMOTE_SUMMARY_TOPIC;
@@ -69800,6 +69869,14 @@ var init_group_tiers = __esm({
       narrowAsks() {
         return this.#all().flatMap((lane) => [...lane.narrow.entries()]);
       }
+      /** Row 011-426: every lane's commit asks, each file's `testFileId` and asked key. */
+      commitAsks() {
+        return this.#all().flatMap((lane) => [...lane.asks.entries()]);
+      }
+      /** Row 011-426: the groups whose lane has an open request (`SlowTier.requested`). */
+      requestedGroups() {
+        return this.#all().filter((lane) => lane.requested).map((lane) => lane.group);
+      }
       /** Drops each lane's narrow asks that can no longer run (`CommitAsks.prune`). */
       pruneNarrow(ledger) {
         for (const lane of this.#all()) lane.narrow.prune(ledger);
@@ -71526,14 +71603,14 @@ var init_slow_tier = __esm({
       /** A `run --slow` request is open until no slow file is pending. */
       #requested = false;
       /** Spec 019 D5 step 1 (row 019-22): the files a commit asked a `commit` group's lane to run. */
-      asks = new CommitAsks();
+      asks = new CommitAsks(() => this.loop.requestsChanged?.());
       /**
        * Spec 019 D6 "Narrow run" (row 019-49): the files `squeal run <group>
        * <path>...` asked to run, each at its key then. They run whatever the
        * group's moment, past the load guard and without a pool grant, as an
        * open request does; the group's other files keep waiting.
        */
-      narrow = new CommitAsks(() => this.loop.narrowChanged?.(), true);
+      narrow = new CommitAsks(() => this.loop.requestsChanged?.(), true);
       /** What is left of `slow.maxDeferMs` for the pass; `null` between passes. */
       #budgetMs = null;
       #slotMissedSince = null;
@@ -71617,8 +71694,14 @@ var init_slow_tier = __esm({
        * load guard wait in progress gives way, so the pump plans again without it.
        */
       request() {
-        this.#requested = true;
+        this.#setRequested(true);
         this.preempt();
+      }
+      /** Row 011-426: an open request starts or ends; status reads it published (`requestsChanged`). */
+      #setRequested(on) {
+        if (this.#requested === on) return;
+        this.#requested = on;
+        this.loop.requestsChanged?.();
       }
       /**
        * A consumer may have gone idle (task 001-281): with slow files queued the
@@ -71813,7 +71896,7 @@ var init_slow_tier = __esm({
         this.asks.prune(ledger);
         this.narrow.prune(ledger);
         if (queued.length === 0 || group === null) {
-          this.#requested = false;
+          this.#setRequested(false);
           this.#budgetMs = null;
           this.#publish(null);
           return [];
@@ -72071,6 +72154,8 @@ var init_slow_tier = __esm({
       retire() {
         const { store, worktreeId } = this.loop;
         this.narrow.clear();
+        this.asks.clear();
+        this.#setRequested(false);
         this.#unmark(this.#slotDir(), worktreeId);
         const now = readGroupActivity(store, worktreeId, this.group);
         if (now !== null && JSON.stringify(now) === this.#published) this.#publish(null);
@@ -73972,14 +74057,16 @@ var init_scheduler2 = __esm({
           pump: () => this.#pump(),
           store: options.store,
           worktreeId: options.worktreeId,
-          // Review 0.1.610 B1: status reads which held files a narrow run asked for.
-          narrowChanged: () => {
+          // Review 0.1.610 B1: status reads which held files a narrow run asked for; row 011-426
+          // (review 0.1.650 B1): and the commit asks and open whole-group requests.
+          requestsChanged: () => {
             const at2 = this.#now();
             publishNarrowAsks(
               options.store,
               options.worktreeId,
               this.#groups.narrowAsks(),
-              this.#steps.stamp(at2)
+              this.#steps.stamp(at2),
+              { commit: this.#groups.commitAsks(), requested: this.#groups.requestedGroups() }
             );
           }
         };
@@ -91118,15 +91205,23 @@ function testsText({ counts, fileLevelCounts: fileLevel, testsByPhase }) {
     stale: tests2("stale"),
     unknown: tests2("unknown")
   };
-  const total = parts3.running + parts3.queued + parts3.stale + parts3.unknown;
+  const total = parts3.running + parts3.queued + parts3.onRequest + parts3.stale + parts3.unknown;
   return total === 0 ? "" : `, ${plural(total, "test")} (${partsText(parts3)})`;
 }
 function splitPending(pending, phases) {
-  return phases === void 0 ? { running: 0, queued: pending } : { ...phases };
+  if (phases === void 0) return { running: 0, queued: pending, onRequest: 0 };
+  return { running: phases.running, queued: phases.queued, onRequest: phases.onRequest ?? 0 };
 }
-var NOT_CURRENT = ["running", "queued", "stale", "unknown"];
+var NOT_CURRENT = {
+  running: "running",
+  queued: "queued",
+  // Row 011-426 (gh-293): a held group's files wait for a request, never "queued".
+  onRequest: "on request",
+  stale: "stale",
+  unknown: "unknown"
+};
 function partsText(parts3) {
-  return NOT_CURRENT.filter((part2) => parts3[part2] > 0).map((part2) => `${parts3[part2]} ${part2}`).join(", ");
+  return Object.keys(NOT_CURRENT).filter((part2) => parts3[part2] > 0).map((part2) => `${parts3[part2]} ${NOT_CURRENT[part2]}`).join(", ");
 }
 
 // src/core/status/commit-lines.ts
@@ -94032,13 +94127,15 @@ function pendingPhasesOf(states, keys, openFiles2) {
   }
   return phases;
 }
-function pendingTestFilesOf(phases) {
+function pendingTestFilesOf(phases, onRequest = /* @__PURE__ */ new Set()) {
   const running2 = [];
   const queued = [];
-  for (const { testFile, phase } of phases.values()) {
-    (phase === "running" ? running2 : queued).push(testFile);
+  const held4 = [];
+  for (const [id, { testFile, phase }] of phases) {
+    (phase === "running" ? running2 : onRequest.has(id) ? held4 : queued).push(testFile);
   }
-  return { running: listed5(running2), queued: listed5(queued) };
+  const own = held4.length === 0 ? {} : { onRequest: listed5(held4) };
+  return { running: listed5(running2), queued: listed5(queued), ...own };
 }
 function listed5(files6) {
   const sorted5 = files6.sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
@@ -94254,6 +94351,12 @@ function affected(s, command) {
   ];
   const unknownFiles = files6 === void 0 || fileLevelByOutcome === void 0 ? void 0 : files6.unknown + fileLevelByOutcome.unknown;
   const optional = [
+    // Row 011-426 (gh-293): the queued checks of files that wait for a request.
+    [
+      pendingByPhase.onRequest ?? 0,
+      "on request",
+      fileLevelByPhase && (fileLevelByPhase.onRequest ?? 0)
+    ],
     [currentByOutcome.skip, "skipped", fileLevelByOutcome?.skip],
     [s.counts.stale, "stale", files6?.stale],
     [s.counts.unknown + currentByOutcome.unknown, "unknown", unknownFiles]
@@ -94999,6 +95102,7 @@ function entry2(records) {
 init_checkpoint_progress();
 init_file_class();
 init_header();
+init_header_part();
 init_open();
 
 // src/core/store/status-reads.ts
@@ -95837,7 +95941,11 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
   const runs2 = openRuns(store, worktree, daemon);
   const held4 = openFiles(runs2);
   const holds5 = readHolds(store, worktree, daemon, now);
-  const header2 = readHeaderOf(store, worktreeId, states, keys, held4);
+  let onRequest = /* @__PURE__ */ new Set();
+  const header2 = headerWith(store, worktreeId, keys, (policy, asked) => {
+    onRequest = asked;
+    return headerPartOf(states, keys, policy, void 0, held4, asked);
+  });
   const knownFailures = withTestFileFrames(
     store,
     worktreeId,
@@ -95883,7 +95991,7 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
     knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
     ...importsOf(store, worktreeId, keys, at2),
-    breakdown: breakdown(states, keys, held4),
+    breakdown: breakdown(states, keys, held4, onRequest),
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
     notes,
@@ -95903,7 +96011,7 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
     ...unknownTestFilesOf(store, worktreeId, states, keys, at2, now),
     ...daemon.state === "alive" ? { runsOpen: runs2.length } : {},
     outstanding,
-    pendingTestFiles: pendingTestFilesOf(phases),
+    pendingTestFiles: pendingTestFilesOf(phases, onRequest),
     ...slowSlot === void 0 ? {} : { slowSlot },
     ...focused.length === 0 ? {} : { focused },
     ...codeStatusOf(
@@ -95988,12 +96096,12 @@ function inheritedSources(store, states) {
 function openFiles(runs2) {
   return new Set(runs2.flatMap((run9) => run9.testFiles.map(testFileId)));
 }
-function breakdown(states, keys, running2) {
+function breakdown(states, keys, running2, onRequest) {
   const filePhase = new Map(keys.map((k) => [testFileId(k.testFile), k.pending]));
   const currentByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
-  const pendingByPhase = { queued: 0, running: 0 };
+  const pendingByPhase = { queued: 0, running: 0, onRequest: 0 };
   const fileLevelByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
-  const fileLevelByPhase = { queued: 0, running: 0 };
+  const fileLevelByPhase = { queued: 0, running: 0, onRequest: 0 };
   for (const g2 of states.groups) {
     if (g2.kind === "setup" || g2.validity !== "current") continue;
     currentByOutcome[g2.outcome] += g2.count;
@@ -96001,12 +96109,13 @@ function breakdown(states, keys, running2) {
   }
   for (const [id, file] of states.files) {
     const held4 = running2.has(id);
+    const queued = onRequest.has(id) ? "onRequest" : "queued";
     for (const kind of ["test", "file"]) {
       const phases = phasesOf(file.pending[kind], held4, filePhase.get(id));
-      pendingByPhase.queued += phases.queued;
+      pendingByPhase[queued] += phases.queued;
       pendingByPhase.running += phases.running;
       if (kind !== "file") continue;
-      fileLevelByPhase.queued += phases.queued;
+      fileLevelByPhase[queued] += phases.queued;
       fileLevelByPhase.running += phases.running;
     }
   }
@@ -96014,15 +96123,18 @@ function breakdown(states, keys, running2) {
   const without2 = keys.filter((k) => !withChecks(testFileId(k.testFile)));
   return {
     currentByOutcome,
-    pendingByPhase,
+    pendingByPhase: phasesWithoutZero(pendingByPhase),
     fileLevelByOutcome,
-    fileLevelByPhase,
+    fileLevelByPhase: phasesWithoutZero(fileLevelByPhase),
     testFiles: keys.length,
     testFilesWithoutChecks: without2.length,
     testFilesWithoutChecksRunning: without2.filter(
       (k) => k.pending === "running" || k.pending !== null && running2.has(testFileId(k.testFile))
     ).length
   };
+}
+function phasesWithoutZero({ onRequest, ...phases }) {
+  return onRequest === 0 ? phases : { ...phases, onRequest };
 }
 var FINDERS = {
   start: "a daemon start's open of the store",
@@ -104541,6 +104653,70 @@ function newsSince(start2, states, revision) {
   }).entries;
 }
 
+// src/cli/status-wait-settled.ts
+init_check_groups();
+init_policy2();
+init_reverse_index();
+init_slow();
+init_derive();
+init_file_class();
+init_groups();
+var NOTHING_RUNS_TEXT = "Nothing left runs by itself; waiting again changes nothing.";
+function nothingRunsByItself(snapshot3) {
+  const files6 = snapshot3.testFileCounts;
+  const phases = snapshot3.testFilesByPhase;
+  if (files6 === void 0 || phases === void 0) return false;
+  if (snapshot3.daemon?.state !== "alive" || snapshot3.daemon.stopping !== void 0) return false;
+  if (snapshot3.testFilesListed === false || snapshot3.runnerPartPending === true) return false;
+  if (snapshot3.awaitingInstall === true || (snapshot3.holds ?? []).length > 0) return false;
+  if (snapshot3.checkpoint !== void 0 && !snapshot3.checkpoint.owed) return false;
+  const tests2 = snapshot3.testsByPhase ?? { running: 0, queued: 0 };
+  if (phases.running + phases.queued + tests2.running + tests2.queued + files6.stale > 0) return false;
+  return (phases.onRequest ?? 0) + files6.unknown > 0;
+}
+function nothingRunsLine(snapshot3, groups3, command) {
+  if (!nothingRunsByItself(snapshot3)) return null;
+  if (groups3.length === 0) return NOTHING_RUNS_TEXT;
+  const runs2 = groups3.map((name3) => `\`${command} run ${name3} --wait\``);
+  const names9 = listText2(groups3);
+  const run9 = runs2.length === 1 ? "runs" : "run";
+  const wait = runs2.length === 1 ? "waits" : "wait";
+  return `${NOTHING_RUNS_TEXT} The edits affect ${names9} test files that do not run by themselves: ${listText2(runs2)} ${run9} them and ${wait} for their results.`;
+}
+function listText2(items) {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+}
+function onRequestGroupsOf(store, worktreeId, files6, states) {
+  const root = store.worktrees.get(worktreeId)?.root;
+  if (root === void 0 || files6.length === 0) return [];
+  const policy = readPolicy(root);
+  if (policy.checks.length === 0) return [];
+  const view = groupView(policy);
+  const held4 = (ref3) => {
+    const group = view.of(ref3);
+    return group.index !== null && heldUntilAsked(group.at);
+  };
+  const own = files6.filter(held4);
+  if (own.length === 0) return [];
+  const keys = store.testFileKeys.list(worktreeId);
+  const onRequest = onRequestFiles(store, worktreeId, keys, policy);
+  const rows = new Map(keys.map((row2) => [testFileId(row2.testFile), row2]));
+  const byFile = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    const id = testFileId(testFileOf(state.check));
+    byFile.set(id, [...byFile.get(id) ?? [], state]);
+  }
+  const names9 = /* @__PURE__ */ new Set();
+  for (const ref3 of own) {
+    const id = testFileId(ref3);
+    const row2 = rows.get(id);
+    const unqueued = row2 !== void 0 && row2.pending === null && fileClassOf(row2, byFile.get(id) ?? []) !== "current";
+    if (onRequest.has(id) || unqueued) names9.add(view.of(ref3).name);
+  }
+  return view.groups.map((group) => group.name).filter((name3) => names9.has(name3));
+}
+
 // src/cli/status-wait-slow.ts
 init_reverse_index();
 init_derive();
@@ -104635,8 +104811,8 @@ function readEvery(store, id, start2, every) {
   const states = kept6?.states ?? store.knownStates.list(id);
   const keys = kept6?.keys ?? store.testFileKeys.list(id);
   let part2;
-  const header2 = headerWith(store, id, keys, (policy) => {
-    part2 = kept6?.part !== void 0 && isDeepStrictEqual2(kept6.part.policy, policy) ? kept6.part : headerPart(states, keys, policy);
+  const header2 = headerWith(store, id, keys, (policy, onRequest) => {
+    part2 = kept6?.part !== void 0 && isDeepStrictEqual2(kept6.part.policy, policy) && isDeepStrictEqual2(kept6.part.onRequest, onRequest) ? kept6.part : headerPart(states, keys, policy, void 0, void 0, onRequest);
     return part2;
   });
   const news = kept6?.news?.revision === header2.revision ? kept6.news.entries : newsSince(start2.all, states, header2.revision);
@@ -104734,11 +104910,13 @@ function editPoll(options) {
   };
 }
 function endOf4({ store, root }, id, { outcome: outcome2, view, window: window2, seen: seen2, held: held4, slowLeft, news, daemon, hold }, watch2, now) {
+  const groups3 = window2 === void 0 || seen2 === null ? [] : onRequestGroupsOf(store, id, window2.files, seen2.states);
   const edit = window2 === void 0 ? void 0 : {
     since: window2.since,
     testFiles: window2.ids.size,
     pending: seen2 === null ? 0 : heldPending(window2, seen2.keys),
-    otherTransitions: splitNews(window2, readHeld2(store, id, view, null).news).other - news.slowNews
+    otherTransitions: splitNews(window2, readHeld2(store, id, view, null).news).other - news.slowNews,
+    ...groups3.length === 0 ? {} : { onRequestGroups: groups3 }
   };
   const result = buildSnapshot(store, root, now());
   const slow = held4 === void 0 ? {} : { slow: { held: held4.size, pending: slowLeft, transitions: news.slowNews } };
@@ -104924,7 +105102,12 @@ function waitLine(wait, command = "squeal") {
   const line = ownLine(wait, command);
   const slow = wait.slow === void 0 || wait.outcome === "no-daemon" ? "" : slowText(wait.slow);
   const live = wait.outcome === "no-daemon" ? "" : waitLiveText(wait);
-  return `${line}${slow}${live}${worktreeText(wait.result)}`;
+  return `${line}${slow}${live}${worktreeText(wait.result)}${nothingRunsAfter(wait, command)}`;
+}
+function nothingRunsAfter(wait, command) {
+  if (wait.outcome !== "quiet") return "";
+  const line = nothingRunsLine(wait.result, wait.edit?.onRequestGroups ?? [], command);
+  return line === null ? "" : `. ${line}`;
 }
 function waitText(wait, now, command = "squeal", options = {}) {
   const locked4 = wait.locked === true ? { locked: true } : {};
@@ -105022,6 +105205,7 @@ function namedLine(wait, command = "squeal") {
   const paths = pathsText(selection);
   let beside = wait.outcome === "unmatched" || paths === "" ? "" : `; ${paths}`;
   let line;
+  let nothing = null;
   switch (wait.outcome) {
     case "unmatched":
       line = `No verdict: ${paths}`;
@@ -105063,13 +105247,16 @@ function namedLine(wait, command = "squeal") {
         beside = "";
       } else {
         line = why2 === null ? `Named test files at revision ${verdict.revision}: ${counted4}` : none3(groups3 === "" ? why2 : `${why2}: ${groups3}`);
+        const left = (wait.leftForPause ?? []).length > 0;
+        if (why2 === null && !snapshot3 && !left) nothing = nothingRunsLine(wait.result, [], command);
       }
     }
   }
   const pause2 = (wait.leftForPause ?? []).length > 0 && (wait.outcome === "settled" || wait.outcome === "timeout") ? `; ${pauseText(wait, command)}` : "";
   const live = wait.outcome === "no-daemon" ? "" : liveText(wait.result.daemon, wait.lapse);
   const next = waitAgainText(wait, result, command);
-  return `${line}${beside}${pause2}${live}${worktreeText(wait.result)}${next}`;
+  const nothingLine = nothing === null ? "" : `. ${nothing}`;
+  return `${line}${beside}${pause2}${live}${worktreeText(wait.result)}${next}${nothingLine}`;
 }
 function onlyLeftText(wait, command) {
   const why2 = leftForGroups(wait.leftGroups) ? "every selected test file waits for its group's moment" : "every selected test file is slow";
@@ -105304,7 +105491,8 @@ async function statusWaitCommand(timeoutMs, json3, io, holdSlow = false, paths =
       outcome: wait.outcome,
       waitedMs: Math.round(wait.waitedMs),
       transitions: wait.transitions,
-      ...wait.edit === void 0 ? {} : { edit: wait.edit }
+      ...wait.edit === void 0 ? {} : { edit: wait.edit },
+      ...wait.outcome === "quiet" && nothingRunsByItself(wait.result) ? { nothingRunsByItself: true } : {}
     };
     io.stdout(`${JSON.stringify({ ...result, wait: payload }, null, 2)}
 `);
@@ -115271,7 +115459,7 @@ import { join as join119 } from "node:path";
 function listCheckouts(dirs) {
   const listed14 = [];
   for (const dir2 of dirs) {
-    for (const name3 of entriesOf6(dir2)) {
+    for (const name3 of entriesOf7(dir2)) {
       const folder = join119(dir2, name3);
       const marker2 = readMarker(folder);
       listed14.push({
@@ -115285,7 +115473,7 @@ function listCheckouts(dirs) {
   return listed14.sort((a, b) => a.folder.localeCompare(b.folder));
 }
 function cacheRepositoryDirs(cacheRoot) {
-  return entriesOf6(cacheRoot).map((name3) => join119(cacheRoot, name3));
+  return entriesOf7(cacheRoot).map((name3) => join119(cacheRoot, name3));
 }
 async function sweepCheckouts(options) {
   return withCheckoutLock(
@@ -115314,7 +115502,7 @@ async function sweepCheckouts(options) {
     options.lockWaitMs
   );
 }
-function entriesOf6(dir2) {
+function entriesOf7(dir2) {
   try {
     return readdirSync37(dir2, { withFileTypes: true }).filter((entry4) => entry4.isDirectory()).map((entry4) => entry4.name);
   } catch (error) {
