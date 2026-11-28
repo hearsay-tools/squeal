@@ -166,7 +166,8 @@ describe("the daemon's remote lane's sleep (review 0.1.616 B7)", () => {
     // The next background run connects again, waking the machine first.
     await l.adapter.run([{ project: "", path: "test/a.test.ts" }], l.background);
     const status = () => readMachines(l.env).machines[0]?.status;
-    for (let i = 0; i < 300 && status() !== "awake"; i++) await sleep(10);
+    // Row 026-43 (review 0.1.667 B2): the record is claimed awake before the wake; wait for the wake.
+    for (let i = 0; i < 300 && !l.calls().includes("wake"); i++) await sleep(10);
     expect(status()).toBe("awake");
     expect(l.calls()).toEqual(["acquire", "sleep", "wake"]);
   });
