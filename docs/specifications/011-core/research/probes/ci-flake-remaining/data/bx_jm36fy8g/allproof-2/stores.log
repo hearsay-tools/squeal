@@ -1,0 +1,1622 @@
+1795823253130 pid=50608 openReadOnly sq-at-keys-nCzDtl/main/.git/squeal/store.sqlite want=1 missing
+1795823253130 pid=50608 openReadOnly sq-at-keys-nCzDtl/main/.git/squeal/code.sqlite want=1 missing
+1795823254861 pid=50608 openReadOnly sq-at-keys-nCzDtl/main/.git/squeal/store.sqlite want=1 missing
+1795823254861 pid=50608 openReadOnly sq-at-keys-nCzDtl/main/.git/squeal/code.sqlite want=1 missing
+1795823254871 pid=50608 openReadOnly sq-at-keys-nCzDtl/main/.git/squeal/store.sqlite want=1 missing
+1795823254871 pid=50608 openReadOnly sq-at-keys-nCzDtl/main/.git/squeal/code.sqlite want=1 missing
+1795823255482 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823255482 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/code.sqlite want=1 missing
+1795823255490 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823255490 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/code.sqlite want=1 missing
+1795823255581 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823255581 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/code.sqlite want=1 missing
+1795823255587 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823255587 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/code.sqlite want=1 missing
+1795823256772 pid=51364 openReadOnly sq-at-keys-nCzDtl/main/.git/squeal/store.sqlite want=1 missing
+1795823257208 pid=51364 child answer kept=undefined notKept=undefined runs=1
+1795823257244 pid=50608 openReadOnly sq-at-keys-nCzDtl/main/.git/squeal/store.sqlite want=1 missing
+1795823257244 pid=50608 openReadOnly sq-at-keys-nCzDtl/main/.git/squeal/code.sqlite want=1 missing
+1795823257249 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823257249 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/code.sqlite want=1 missing
+1795823257255 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823257255 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/code.sqlite want=1 missing
+1795823257265 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823257265 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/code.sqlite want=1 missing
+1795823257271 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823257271 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/code.sqlite want=1 missing
+1795823257768 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823257768 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/code.sqlite want=1 missing
+1795823257771 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823257771 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/code.sqlite want=1 missing
+1795823257774 pid=50608 openReadOnly sq-at-keys-owi3YQ/main/.git/squeal/store.sqlite want=1 missing
+1795823257774 pid=50608 openReadOnly sq-at-keys-owi3YQ/main/.git/squeal/code.sqlite want=1 missing
+1795823259303 pid=50608 openReadOnly sq-at-keys-owi3YQ/main/.git/squeal/store.sqlite want=1 missing
+1795823259303 pid=50608 openReadOnly sq-at-keys-owi3YQ/main/.git/squeal/code.sqlite want=1 missing
+1795823259313 pid=50608 openReadOnly sq-at-keys-owi3YQ/main/.git/squeal/store.sqlite want=1 missing
+1795823259313 pid=50608 openReadOnly sq-at-keys-owi3YQ/main/.git/squeal/code.sqlite want=1 missing
+1795823260152 pid=51650 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823260153 pid=51650 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823260189 pid=51661 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823260191 pid=51661 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823260882 pid=51650 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/code.sqlite want=1 null got=0
+1795823260920 pid=51661 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/code.sqlite want=1 null got=0
+1795823261449 pid=51650 child answer kept=0 notKept=0 runs=1
+1795823261503 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823261503 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823261504 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823261504 pid=50607 openReadOnly sq-at-keys-OdvzMW/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823261528 pid=51661 child answer kept=0 notKept=0 runs=1
+1795823261556 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823261556 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823261557 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823261557 pid=50606 openReadOnly sq-at-keys-n0cPPe/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823261767 pid=50608 openReadOnly sq-at-keys-gGoEgJ/main/.git/squeal/store.sqlite want=1 missing
+1795823261767 pid=50608 openReadOnly sq-at-keys-gGoEgJ/main/.git/squeal/code.sqlite want=1 missing
+1795823263503 pid=50608 openReadOnly sq-at-keys-gGoEgJ/main/.git/squeal/store.sqlite want=1 missing
+1795823263503 pid=50608 openReadOnly sq-at-keys-gGoEgJ/main/.git/squeal/code.sqlite want=1 missing
+1795823263515 pid=50608 openReadOnly sq-at-keys-gGoEgJ/main/.git/squeal/store.sqlite want=1 missing
+1795823263515 pid=50608 openReadOnly sq-at-keys-gGoEgJ/main/.git/squeal/code.sqlite want=1 missing
+1795823265134 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823265134 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/code.sqlite want=1 missing
+1795823265141 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823265141 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/code.sqlite want=1 missing
+1795823265285 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823265285 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/code.sqlite want=1 missing
+1795823265295 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823265295 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/code.sqlite want=1 missing
+1795823265571 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/store.sqlite want=1 missing
+1795823265571 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/code.sqlite want=1 missing
+1795823266705 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823266705 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/code.sqlite want=1 missing
+1795823266712 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823266712 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/code.sqlite want=1 missing
+1795823266860 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823266860 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/code.sqlite want=1 missing
+1795823266869 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823266869 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/code.sqlite want=1 missing
+1795823266895 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/store.sqlite want=1 missing
+1795823266895 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/code.sqlite want=1 missing
+1795823266905 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/store.sqlite want=1 missing
+1795823266905 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/code.sqlite want=1 missing
+1795823267104 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823267104 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/code.sqlite want=1 missing
+1795823267287 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823267287 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/code.sqlite want=1 missing
+1795823269237 pid=52489 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/store.sqlite want=1 missing
+1795823269766 pid=52513 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823269768 pid=52513 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823269829 pid=52523 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823269831 pid=52523 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823269948 pid=52513 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/code.sqlite want=1 null got=0
+1795823270034 pid=52489 child answer kept=undefined notKept=undefined runs=1
+1795823270061 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/store.sqlite want=1 missing
+1795823270061 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/code.sqlite want=1 missing
+1795823270262 pid=52523 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/code.sqlite want=1 null got=0
+1795823270536 pid=52513 child answer kept=0 notKept=0 runs=1
+1795823270582 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823270582 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823270584 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823270584 pid=50607 openReadOnly sq-at-keys-5J2xh8/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823270858 pid=52583 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/store.sqlite want=1 missing
+1795823270968 pid=52523 child answer kept=0 notKept=0 runs=1
+1795823271004 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823271004 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823271005 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823271005 pid=50606 openReadOnly sq-at-keys-m62LgB/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823271341 pid=52583 child answer kept=undefined notKept=undefined runs=1
+1795823271380 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/store.sqlite want=1 missing
+1795823271380 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/code.sqlite want=1 missing
+1795823271391 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/store.sqlite want=1 missing
+1795823271391 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/code.sqlite want=1 missing
+1795823272632 pid=52743 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/store.sqlite want=1 missing
+1795823272632 pid=52743 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/store.sqlite want=1 missing
+1795823272632 pid=52743 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/code.sqlite want=1 missing
+1795823273401 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823273401 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/code.sqlite want=1 missing
+1795823273402 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823273402 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/code.sqlite want=1 missing
+1795823273409 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823273409 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/code.sqlite want=1 missing
+1795823273409 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823273409 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/code.sqlite want=1 missing
+1795823274710 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823274710 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/code.sqlite want=1 missing
+1795823274717 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823274717 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/code.sqlite want=1 missing
+1795823274732 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823274732 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/code.sqlite want=1 missing
+1795823274739 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823274739 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/code.sqlite want=1 missing
+1795823275155 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823275155 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/code.sqlite want=1 missing
+1795823275293 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823275293 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/code.sqlite want=1 missing
+1795823275326 pid=52743 child answer kept=1 notKept=0 runs=1
+1795823275348 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823275348 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823275350 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823275350 pid=50608 openReadOnly sq-at-keys-GstZAC/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823276146 pid=53042 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/store.sqlite want=1 missing
+1795823276146 pid=53042 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/store.sqlite want=1 missing
+1795823276147 pid=53042 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/code.sqlite want=1 missing
+1795823276907 pid=53103 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823276908 pid=53103 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823276989 pid=53103 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/code.sqlite want=1 null got=0
+1795823277051 pid=53113 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823277053 pid=53113 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823277427 pid=53103 child answer kept=0 notKept=0 runs=1
+1795823277465 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823277466 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823277466 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823277466 pid=50607 openReadOnly sq-at-keys-NtRx4H/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823277485 pid=53113 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/code.sqlite want=1 null got=0
+1795823277911 pid=53113 child answer kept=0 notKept=0 runs=1
+1795823277950 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823277951 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823277951 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823277951 pid=50606 openReadOnly sq-at-keys-GqBtKi/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823280539 pid=53042 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823280539 pid=53042 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823280546 pid=53042 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823280547 pid=53042 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823280557 pid=53042 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823280557 pid=53042 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823280658 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823280670 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/code.sqlite want=1 missing
+1795823280677 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823280677 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/code.sqlite want=1 missing
+1795823281055 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823281055 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/code.sqlite want=1 missing
+1795823281062 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823281062 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/code.sqlite want=1 missing
+1795823281995 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823281995 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/code.sqlite want=1 missing
+1795823282013 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823282013 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/code.sqlite want=1 missing
+1795823282089 pid=53473 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823282090 pid=53473 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823282090 pid=53473 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823282172 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823282172 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/code.sqlite want=1 missing
+1795823282183 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823282183 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/code.sqlite want=1 missing
+1795823282297 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823282297 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/code.sqlite want=1 missing
+1795823282558 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823282558 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/code.sqlite want=1 missing
+1795823283757 pid=53473 child answer kept=1 notKept=0 runs=1
+1795823283784 pid=53042 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823283784 pid=53042 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823283785 pid=53042 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823283785 pid=53042 openReadOnly sq-at-keys-MRVvkZ/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823284171 pid=53659 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823284172 pid=53659 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823284172 pid=53659 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/code.sqlite want=1 missing
+1795823284827 pid=53719 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823284828 pid=53719 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823284829 pid=53719 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823285577 pid=53659 child answer kept=1 notKept=0 runs=1
+1795823285599 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823285599 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823285600 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823285600 pid=50606 openReadOnly sq-at-keys-ZmyjkO/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823285977 pid=53042 openReadOnly sq-at-keys-EDGMlG/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823285977 pid=53042 openReadOnly sq-at-keys-EDGMlG/main/.git/squeal/code.sqlite want=1 missing
+1795823285983 pid=53042 openReadOnly sq-at-keys-EDGMlG/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823285983 pid=53042 openReadOnly sq-at-keys-EDGMlG/main/.git/squeal/code.sqlite want=1 missing
+1795823286288 pid=53719 child answer kept=1 notKept=0 runs=1
+1795823286308 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823286308 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823286309 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823286309 pid=50607 openReadOnly sq-at-keys-1Hbxhg/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823288063 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823288063 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/code.sqlite want=1 missing
+1795823288071 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823288071 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/code.sqlite want=1 missing
+1795823288670 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823288670 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/code.sqlite want=1 missing
+1795823288677 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823288677 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/code.sqlite want=1 missing
+1795823289154 pid=53042 openReadOnly sq-at-keys-PTozNg/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823289154 pid=53042 openReadOnly sq-at-keys-PTozNg/main/.git/squeal/code.sqlite want=1 missing
+1795823289431 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823289431 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/code.sqlite want=1 missing
+1795823289439 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823289439 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/code.sqlite want=1 missing
+1795823289667 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823289667 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/code.sqlite want=1 missing
+1795823289674 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823289674 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/code.sqlite want=1 missing
+1795823289915 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823289915 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/code.sqlite want=1 missing
+1795823290167 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823290167 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/code.sqlite want=1 missing
+1795823291847 pid=54225 openReadOnly sq-at-keys-unZW57/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823291849 pid=54225 openReadOnly sq-at-keys-unZW57/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823291912 pid=54235 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823291913 pid=54235 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823292278 pid=54225 openReadOnly sq-at-keys-unZW57/main/.git/squeal/code.sqlite want=1 null got=0
+1795823292643 pid=54235 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/code.sqlite want=1 null got=0
+1795823292718 pid=54225 child answer kept=0 notKept=0 runs=1
+1795823292743 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823292744 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823292744 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823292744 pid=50606 openReadOnly sq-at-keys-unZW57/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823293074 pid=54235 child answer kept=0 notKept=0 runs=1
+1795823293114 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823293114 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823293115 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823293115 pid=50607 openReadOnly sq-at-keys-Dv6tYw/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823294248 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823294248 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/code.sqlite want=1 missing
+1795823294255 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823294255 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/code.sqlite want=1 missing
+1795823294951 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823294951 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/code.sqlite want=1 missing
+1795823294957 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823294957 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/code.sqlite want=1 missing
+1795823295160 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823295160 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/code.sqlite want=1 missing
+1795823295167 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823295167 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/code.sqlite want=1 missing
+1795823295448 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823295449 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/code.sqlite want=1 missing
+1795823295756 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823295756 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/code.sqlite want=1 missing
+1795823295764 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823295764 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/code.sqlite want=1 missing
+1795823296031 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823296031 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/code.sqlite want=1 missing
+1795823296538 pid=54579 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823296540 pid=54579 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823296540 pid=54579 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/code.sqlite want=1 missing
+1795823298854 pid=54579 child answer kept=1 notKept=0 runs=1
+1795823298877 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823298877 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823298878 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823298878 pid=50606 openReadOnly sq-at-keys-RbIXgr/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823299759 pid=54700 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823299761 pid=54700 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823299761 pid=54700 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823300929 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823300929 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/code.sqlite want=1 missing
+1795823300936 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823300936 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/code.sqlite want=1 missing
+1795823301506 pid=54700 child answer kept=1 notKept=0 runs=1
+1795823301527 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823301527 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823301528 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823301528 pid=50607 openReadOnly sq-at-keys-2mStGc/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823301592 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823301592 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/code.sqlite want=1 missing
+1795823301839 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823301839 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/code.sqlite want=1 missing
+1795823301847 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823301847 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/code.sqlite want=1 missing
+1795823302995 pid=54956 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823303154 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823303154 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/code.sqlite want=1 missing
+1795823303164 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823303164 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/code.sqlite want=1 missing
+1795823303449 pid=54956 child answer kept=0 notKept=0 runs=2
+1795823303478 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823303478 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/code.sqlite want=1 missing
+1795823303478 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823303478 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/code.sqlite want=1 missing
+1795823303573 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823303573 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/code.sqlite want=1 missing
+1795823303889 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823303889 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/code.sqlite want=1 missing
+1795823303897 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823303897 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/code.sqlite want=1 missing
+1795823304242 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823304242 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/code.sqlite want=1 missing
+1795823304701 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823304701 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/code.sqlite want=1 missing
+1795823304709 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823304709 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/code.sqlite want=1 missing
+1795823304722 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823304722 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/code.sqlite want=1 missing
+1795823305004 pid=55181 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823305006 pid=55181 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823305006 pid=55181 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/code.sqlite want=1 missing
+1795823306225 pid=55258 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823306668 pid=55258 child answer kept=0 notKept=0 runs=2
+1795823306691 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823306691 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/code.sqlite want=1 missing
+1795823306691 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823306691 pid=54662 openReadOnly sq-at-keys-Dd3lfa/main/.git/squeal/code.sqlite want=1 missing
+1795823306716 pid=55181 child answer kept=1 notKept=0 runs=1
+1795823306739 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823306740 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823306740 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823306740 pid=50606 openReadOnly sq-at-keys-0Fzy52/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823307798 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823307799 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823307806 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823307806 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823309148 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823309148 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823309155 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823309156 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823309226 pid=54662 openReadOnly sq-at-keys-4APbFt/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823309226 pid=54662 openReadOnly sq-at-keys-4APbFt/main/.git/squeal/code.sqlite want=1 missing
+1795823309232 pid=54662 openReadOnly sq-at-keys-4APbFt/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823309232 pid=54662 openReadOnly sq-at-keys-4APbFt/main/.git/squeal/code.sqlite want=1 missing
+1795823309266 pid=50606 openReadOnly sq-at-keys-R7bXFH/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823309266 pid=50606 openReadOnly sq-at-keys-R7bXFH/main/.git/squeal/code.sqlite want=1 missing
+1795823309273 pid=50606 openReadOnly sq-at-keys-R7bXFH/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823309273 pid=50606 openReadOnly sq-at-keys-R7bXFH/main/.git/squeal/code.sqlite want=1 missing
+1795823309427 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823309427 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823310031 pid=54662 openReadOnly sq-at-keys-4APbFt/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823310031 pid=54662 openReadOnly sq-at-keys-4APbFt/main/.git/squeal/code.sqlite want=1 missing
+1795823311718 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823311718 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/code.sqlite want=1 missing
+1795823311725 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823311726 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/code.sqlite want=1 missing
+1795823311729 pid=55677 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823312519 pid=55677 child answer kept=0 notKept=0 runs=1
+1795823312609 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823312610 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823312611 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823312611 pid=50607 openReadOnly sq-at-keys-i2ociI/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823312818 pid=55755 openReadOnly sq-at-keys-4APbFt/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823313236 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823313237 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/code.sqlite want=1 missing
+1795823313248 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823313248 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/code.sqlite want=1 missing
+1795823313308 pid=55755 child answer kept=undefined notKept=undefined runs=2
+1795823313335 pid=54662 openReadOnly sq-at-keys-4APbFt/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823313335 pid=54662 openReadOnly sq-at-keys-4APbFt/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823313721 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823313721 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/code.sqlite want=1 missing
+1795823314860 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823314861 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/code.sqlite want=1 missing
+1795823314870 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823314870 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/code.sqlite want=1 missing
+1795823315222 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/store.sqlite want=1 missing
+1795823315223 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/store.sqlite want=1 missing
+1795823315223 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/code.sqlite want=1 missing
+1795823315622 pid=56017 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823315623 pid=56017 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823315623 pid=56017 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/code.sqlite want=1 missing
+1795823316684 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823316684 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/code.sqlite want=1 missing
+1795823316696 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823316696 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/code.sqlite want=1 missing
+1795823317835 pid=56017 child answer kept=1 notKept=0 runs=1
+1795823317864 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823317864 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823317865 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823317865 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823317987 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823317988 pid=50606 openReadOnly sq-at-keys-1Aw3es/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823318441 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823318441 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/code.sqlite want=1 missing
+1795823318449 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823318449 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/code.sqlite want=1 missing
+1795823318858 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823318858 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/code.sqlite want=1 missing
+1795823319866 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823319866 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823319874 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823319874 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823320462 pid=56442 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823320463 pid=56442 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823320463 pid=56442 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/code.sqlite want=1 missing
+1795823320472 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823320475 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823320715 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823320715 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/code.sqlite want=1 missing
+1795823320723 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823320723 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/code.sqlite want=1 missing
+1795823322194 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823322194 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/code.sqlite want=1 missing
+1795823322203 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823322203 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/code.sqlite want=1 missing
+1795823322486 pid=56442 child answer kept=1 notKept=0 runs=1
+1795823322522 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823322522 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823322524 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823322524 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823322785 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823322785 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/code.sqlite want=1 missing
+1795823322797 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823322797 pid=50607 openReadOnly sq-at-keys-70WTV0/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823323658 pid=56990 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823323660 pid=56990 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823323660 pid=56990 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823324954 pid=57066 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823324956 pid=57066 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823324956 pid=57066 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/code.sqlite want=1 missing
+1795823325977 pid=56990 child answer kept=1 notKept=0 runs=1
+1795823326003 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823326004 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823326004 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823326005 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823326044 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823326044 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/code.sqlite want=1 missing
+1795823326052 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823326052 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/code.sqlite want=1 missing
+1795823326227 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823326227 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823326925 pid=57066 child answer kept=1 notKept=0 runs=1
+1795823326949 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823326949 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823326950 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823326950 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823327196 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823327196 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823327738 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823327738 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/code.sqlite want=1 missing
+1795823327746 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823327746 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/code.sqlite want=1 missing
+1795823328230 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823328230 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/code.sqlite want=1 missing
+1795823328315 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823328315 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823328323 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823328323 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823328333 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823328334 pid=54662 openReadOnly sq-at-keys-uSWM7r/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823328992 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823328992 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823329001 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823329001 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823329019 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823329019 pid=50606 openReadOnly sq-at-keys-K33UPc/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823330308 pid=57486 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823330310 pid=57486 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823330310 pid=57486 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/code.sqlite want=1 missing
+1795823332383 pid=57486 child answer kept=1 notKept=0 runs=1
+1795823332406 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823332406 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823332407 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823332407 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823332553 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823332553 pid=50607 openReadOnly sq-at-keys-0g1F89/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823333720 pid=50606 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823333720 pid=50606 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/code.sqlite want=1 missing
+1795823333728 pid=50606 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823333728 pid=50606 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/code.sqlite want=1 missing
+1795823334161 pid=50606 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823334161 pid=50606 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/code.sqlite want=1 missing
+1795823335083 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823335084 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/code.sqlite want=1 missing
+1795823335091 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823335091 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/code.sqlite want=1 missing
+1795823335726 pid=57828 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823335727 pid=57828 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823336123 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823336123 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/code.sqlite want=1 missing
+1795823336129 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823336129 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/code.sqlite want=1 missing
+1795823336257 pid=57828 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/code.sqlite want=1 null got=0
+1795823336556 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823336556 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/code.sqlite want=1 missing
+1795823336566 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823336566 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/code.sqlite want=1 missing
+1795823336702 pid=57828 child answer kept=0 notKept=0 runs=1
+1795823336739 pid=50606 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823336739 pid=50606 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823336740 pid=50606 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823336740 pid=50606 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823336835 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823336835 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/code.sqlite want=1 missing
+1795823336857 pid=50606 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823336857 pid=50606 openReadOnly sq-at-keys-4ZWZyc/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823336987 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823336987 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/code.sqlite want=1 missing
+1795823336993 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823336993 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/code.sqlite want=1 missing
+1795823337481 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823337481 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/code.sqlite want=1 missing
+1795823338475 pid=58090 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823338477 pid=58090 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823338806 pid=58090 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/code.sqlite want=1 null got=0
+1795823339108 pid=50606 openReadOnly sq-at-keys-esj6D7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823339110 pid=50606 openReadOnly sq-at-keys-esj6D7/main/.git/squeal/code.sqlite want=1 missing
+1795823339123 pid=50606 openReadOnly sq-at-keys-esj6D7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823339123 pid=50606 openReadOnly sq-at-keys-esj6D7/main/.git/squeal/code.sqlite want=1 missing
+1795823339203 pid=58118 openReadOnly sq-at-keys-JukUap/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823339204 pid=58118 openReadOnly sq-at-keys-JukUap/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823339365 pid=58090 child answer kept=0 notKept=0 runs=1
+1795823339397 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823339397 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823339398 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823339398 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823339505 pid=50606 openReadOnly sq-at-keys-esj6D7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823339505 pid=50606 openReadOnly sq-at-keys-esj6D7/main/.git/squeal/code.sqlite want=1 missing
+1795823339553 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823339553 pid=50607 openReadOnly sq-at-keys-lVWG0M/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823339633 pid=58118 openReadOnly sq-at-keys-JukUap/main/.git/squeal/code.sqlite want=1 null got=0
+1795823340075 pid=58118 child answer kept=0 notKept=0 runs=1
+1795823340112 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823340113 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823340113 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823340113 pid=57719 openReadOnly sq-at-keys-JukUap/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823342220 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823342220 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 missing
+1795823342226 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823342226 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 missing
+1795823342660 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823342660 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 missing
+1795823342901 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823342901 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 missing
+1795823342908 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823342908 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 missing
+1795823344089 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823344089 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 missing
+1795823344099 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823344099 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 missing
+1795823344139 pid=58508 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823344140 pid=58508 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823344370 pid=58508 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 null got=0
+1795823344393 pid=58386 openReadOnly sq-at-keys-S8Zj0t/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823344394 pid=58386 openReadOnly sq-at-keys-S8Zj0t/main/.git/squeal/code.sqlite want=1 missing
+1795823344405 pid=58386 openReadOnly sq-at-keys-S8Zj0t/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823344406 pid=58386 openReadOnly sq-at-keys-S8Zj0t/main/.git/squeal/code.sqlite want=1 missing
+1795823344544 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823344544 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 missing
+1795823344798 pid=58508 child answer kept=0 notKept=0 runs=1
+1795823344837 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823344837 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823344837 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823344838 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823345102 pid=58386 openReadOnly sq-at-keys-S8Zj0t/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823345102 pid=58386 openReadOnly sq-at-keys-S8Zj0t/main/.git/squeal/code.sqlite want=1 missing
+1795823345509 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823345509 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823346022 pid=58714 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823346024 pid=58714 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823346024 pid=58714 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 missing
+1795823346447 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823346447 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823346460 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823346460 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823346638 pid=58763 openReadOnly sq-at-keys-S8Zj0t/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823346639 pid=58763 openReadOnly sq-at-keys-S8Zj0t/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823347068 pid=58763 openReadOnly sq-at-keys-S8Zj0t/main/.git/squeal/code.sqlite want=1 null got=0
+1795823347545 pid=58714 child answer kept=1 notKept=0 runs=1
+1795823347550 pid=58763 child answer kept=0 notKept=0 runs=2
+1795823347575 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823347575 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823347576 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823347576 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823347600 pid=58386 openReadOnly sq-at-keys-S8Zj0t/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823347600 pid=58386 openReadOnly sq-at-keys-S8Zj0t/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823347601 pid=58386 openReadOnly sq-at-keys-S8Zj0t/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823347601 pid=58386 openReadOnly sq-at-keys-S8Zj0t/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823347933 pid=58881 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823348368 pid=58881 child answer kept=undefined notKept=undefined runs=1
+1795823348399 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823348399 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823349063 pid=58963 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823349419 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823349419 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823349427 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823349428 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823349439 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823349439 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823349522 pid=58963 child answer kept=undefined notKept=undefined runs=1
+1795823349566 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823349566 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823349579 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823349579 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823350370 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823350370 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/code.sqlite want=1 missing
+1795823350376 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823350376 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/code.sqlite want=1 missing
+1795823350938 pid=59116 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823350940 pid=59116 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823350940 pid=59116 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823351032 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823351032 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/code.sqlite want=1 missing
+1795823351264 pid=59136 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823351265 pid=59136 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823351265 pid=59136 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823352509 pid=59226 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823352685 pid=59116 child answer kept=1 notKept=0 runs=1
+1795823352708 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823352708 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823352709 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823352709 pid=57719 openReadOnly sq-at-keys-rwvirf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823352899 pid=59136 child answer kept=1 notKept=0 runs=1
+1795823352925 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823352925 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823352926 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823352926 pid=58242 openReadOnly sq-at-keys-buTqaR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823352946 pid=59226 child answer kept=0 notKept=0 runs=2
+1795823352993 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823352993 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/code.sqlite want=1 missing
+1795823352993 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823352993 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/code.sqlite want=1 missing
+1795823353278 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 missing
+1795823353278 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 missing
+1795823354576 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 missing
+1795823354576 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 missing
+1795823354590 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823354590 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/code.sqlite want=1 missing
+1795823354592 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 missing
+1795823354592 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 missing
+1795823354597 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823354597 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/code.sqlite want=1 missing
+1795823354608 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823354608 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/code.sqlite want=1 missing
+1795823354827 pid=57719 openReadOnly sq-at-keys-gmYXAv/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823354827 pid=57719 openReadOnly sq-at-keys-gmYXAv/main/.git/squeal/code.sqlite want=1 missing
+1795823354835 pid=57719 openReadOnly sq-at-keys-gmYXAv/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823354835 pid=57719 openReadOnly sq-at-keys-gmYXAv/main/.git/squeal/code.sqlite want=1 missing
+1795823356175 pid=59539 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 missing
+1795823356426 pid=57719 openReadOnly sq-at-keys-gmYXAv/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823356427 pid=57719 openReadOnly sq-at-keys-gmYXAv/main/.git/squeal/code.sqlite want=1 missing
+1795823356441 pid=57719 openReadOnly sq-at-keys-gmYXAv/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823356441 pid=57719 openReadOnly sq-at-keys-gmYXAv/main/.git/squeal/code.sqlite want=1 missing
+1795823356483 pid=59551 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823356809 pid=59539 child answer kept=undefined notKept=undefined runs=1
+1795823356835 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 missing
+1795823356835 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 missing
+1795823356972 pid=59551 child answer kept=0 notKept=0 runs=2
+1795823357024 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823357024 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/code.sqlite want=1 missing
+1795823357024 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823357024 pid=58386 openReadOnly sq-at-keys-t4g9ct/main/.git/squeal/code.sqlite want=1 missing
+1795823357439 pid=59676 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 missing
+1795823357866 pid=59676 child answer kept=undefined notKept=undefined runs=1
+1795823357906 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 missing
+1795823357906 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 missing
+1795823358086 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 missing
+1795823358086 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 missing
+1795823358099 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/store.sqlite want=1 missing
+1795823358100 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/store.sqlite want=1 missing
+1795823358100 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/code.sqlite want=1 missing
+1795823358820 pid=57719 openReadOnly sq-at-keys-n6nMDd/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823358820 pid=57719 openReadOnly sq-at-keys-n6nMDd/main/.git/squeal/code.sqlite want=1 missing
+1795823358827 pid=57719 openReadOnly sq-at-keys-n6nMDd/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823358827 pid=57719 openReadOnly sq-at-keys-n6nMDd/main/.git/squeal/code.sqlite want=1 missing
+1795823359886 pid=59833 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 missing
+1795823359886 pid=59833 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 missing
+1795823359886 pid=59833 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 missing
+1795823360238 pid=57719 openReadOnly sq-at-keys-n6nMDd/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823360238 pid=57719 openReadOnly sq-at-keys-n6nMDd/main/.git/squeal/code.sqlite want=1 missing
+1795823360245 pid=57719 openReadOnly sq-at-keys-n6nMDd/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823360245 pid=57719 openReadOnly sq-at-keys-n6nMDd/main/.git/squeal/code.sqlite want=1 missing
+1795823361615 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823361616 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823361622 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823361622 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823362031 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823362031 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823362040 pid=57719 openReadOnly sq-at-keys-QUpf1W/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823362040 pid=57719 openReadOnly sq-at-keys-QUpf1W/main/.git/squeal/code.sqlite want=1 missing
+1795823362048 pid=57719 openReadOnly sq-at-keys-QUpf1W/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823362048 pid=57719 openReadOnly sq-at-keys-QUpf1W/main/.git/squeal/code.sqlite want=1 missing
+1795823362951 pid=59833 child answer kept=1 notKept=0 runs=1
+1795823362979 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823362980 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823362981 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823362981 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823363386 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823363386 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823363884 pid=60115 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823363885 pid=60115 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823363885 pid=60115 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823364845 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823364845 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823364854 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823364854 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823365309 pid=60115 child answer kept=1 notKept=0 runs=1
+1795823365331 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823365331 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823365333 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823365333 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823365420 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823365420 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/code.sqlite want=1 missing
+1795823365426 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823365426 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/code.sqlite want=1 missing
+1795823365459 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823365459 pid=58386 openReadOnly sq-at-keys-Uw6MwC/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823365815 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823365815 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/code.sqlite want=1 missing
+1795823365961 pid=60284 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823366416 pid=60284 child answer kept=undefined notKept=undefined runs=1
+1795823366448 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823366448 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823366983 pid=60368 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823367434 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823367435 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 missing
+1795823367448 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823367449 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 missing
+1795823367467 pid=60389 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823367468 pid=60389 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823367544 pid=60368 child answer kept=undefined notKept=undefined runs=1
+1795823367597 pid=60389 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/code.sqlite want=1 null got=0
+1795823367666 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823367667 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823367678 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823367678 pid=58242 openReadOnly sq-at-keys-su70q7/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823367916 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823367916 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 missing
+1795823368179 pid=60389 child answer kept=0 notKept=0 runs=1
+1795823368201 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823368201 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823368202 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823368202 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823368357 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823368357 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823369398 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/store.sqlite want=1 missing
+1795823369398 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/code.sqlite want=1 missing
+1795823369621 pid=60654 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823369873 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823369873 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823369880 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823369880 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823369891 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823369892 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823370114 pid=60654 child answer kept=undefined notKept=undefined runs=1
+1795823370395 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823370395 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823370653 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823370653 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823370757 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/store.sqlite want=1 missing
+1795823370757 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/code.sqlite want=1 missing
+1795823370766 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/store.sqlite want=1 missing
+1795823370766 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/code.sqlite want=1 missing
+1795823371694 pid=60824 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823371695 pid=60824 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823371695 pid=60824 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823372002 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823372003 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823372017 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823372017 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823372033 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823372034 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823372404 pid=60899 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/store.sqlite want=1 missing
+1795823372847 pid=60899 child answer kept=undefined notKept=undefined runs=1
+1795823372871 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/store.sqlite want=1 missing
+1795823372871 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/code.sqlite want=1 missing
+1795823373135 pid=60824 child answer kept=1 notKept=0 runs=1
+1795823373185 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823373185 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823373187 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823373187 pid=60056 openReadOnly sq-at-keys-po0lUr/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823373579 pid=60982 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/store.sqlite want=1 missing
+1795823373629 pid=60992 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823374088 pid=60982 child answer kept=undefined notKept=undefined runs=1
+1795823374127 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/store.sqlite want=1 missing
+1795823374127 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/code.sqlite want=1 missing
+1795823374133 pid=60992 child answer kept=undefined notKept=undefined runs=1
+1795823374137 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/store.sqlite want=1 missing
+1795823374137 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/code.sqlite want=1 missing
+1795823374163 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823374163 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823374422 pid=60056 openReadOnly sq-at-keys-880UJd/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823374422 pid=60056 openReadOnly sq-at-keys-880UJd/main/.git/squeal/code.sqlite want=1 missing
+1795823374429 pid=60056 openReadOnly sq-at-keys-880UJd/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823374429 pid=60056 openReadOnly sq-at-keys-880UJd/main/.git/squeal/code.sqlite want=1 missing
+1795823374822 pid=60056 openReadOnly sq-at-keys-880UJd/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823374822 pid=60056 openReadOnly sq-at-keys-880UJd/main/.git/squeal/code.sqlite want=1 missing
+1795823375289 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823375290 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823375310 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823375310 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823375344 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823375344 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823375593 pid=61199 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/store.sqlite want=1 missing
+1795823375594 pid=61199 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/store.sqlite want=1 missing
+1795823375594 pid=61199 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/code.sqlite want=1 missing
+1795823376241 pid=61271 openReadOnly sq-at-keys-880UJd/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823376242 pid=61271 openReadOnly sq-at-keys-880UJd/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823376672 pid=61271 openReadOnly sq-at-keys-880UJd/main/.git/squeal/code.sqlite want=1 null got=0
+1795823377256 pid=61313 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823377257 pid=61313 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823377258 pid=61313 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823377310 pid=61271 child answer kept=0 notKept=0 runs=1
+1795823377339 pid=60056 openReadOnly sq-at-keys-880UJd/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823377339 pid=60056 openReadOnly sq-at-keys-880UJd/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823377340 pid=60056 openReadOnly sq-at-keys-880UJd/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823377340 pid=60056 openReadOnly sq-at-keys-880UJd/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823377432 pid=60056 openReadOnly sq-at-keys-880UJd/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823377432 pid=60056 openReadOnly sq-at-keys-880UJd/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823379175 pid=61199 child answer kept=1 notKept=0 runs=1
+1795823379204 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823379204 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823379205 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823379205 pid=58242 openReadOnly sq-at-keys-zba1qG/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823379261 pid=61313 child answer kept=1 notKept=0 runs=1
+1795823379287 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823379287 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823379289 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823379289 pid=58386 openReadOnly sq-at-keys-XXsHYq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823380097 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823380098 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/code.sqlite want=1 missing
+1795823380107 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823380107 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/code.sqlite want=1 missing
+1795823380462 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823380462 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/code.sqlite want=1 missing
+1795823382005 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823382005 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 missing
+1795823382013 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823382013 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 missing
+1795823382542 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823382542 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 missing
+1795823383084 pid=62071 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823383085 pid=62071 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823383095 pid=61509 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823383095 pid=61509 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/code.sqlite want=1 missing
+1795823383103 pid=61509 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823383103 pid=61509 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/code.sqlite want=1 missing
+1795823383415 pid=62071 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/code.sqlite want=1 null got=0
+1795823383716 pid=61509 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823383716 pid=61509 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/code.sqlite want=1 missing
+1795823383899 pid=62071 child answer kept=0 notKept=0 runs=1
+1795823383927 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823383927 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823383928 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823383928 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823384775 pid=62207 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823384776 pid=62207 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823385306 pid=62207 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 null got=0
+1795823385925 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823385925 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823385937 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823385938 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823385956 pid=62249 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823385958 pid=62249 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823385963 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823385963 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823385967 pid=62207 child answer kept=0 notKept=0 runs=1
+1795823385999 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823386000 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823386001 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823386001 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823386012 pid=62249 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/code.sqlite want=1 null got=0
+1795823386204 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823386204 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823386215 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823386215 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823386233 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823386233 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823386518 pid=62249 child answer kept=0 notKept=0 runs=1
+1795823386548 pid=61509 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823386548 pid=61509 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823386549 pid=61509 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823386549 pid=61509 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823386795 pid=61509 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823386795 pid=61509 openReadOnly sq-at-keys-SDlB1L/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823388187 pid=62399 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823388188 pid=62399 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823388188 pid=62399 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823388248 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823388249 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823388260 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823388260 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823388274 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823388274 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823390180 pid=61509 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823390180 pid=61509 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/code.sqlite want=1 missing
+1795823390188 pid=61509 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823390188 pid=61509 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/code.sqlite want=1 missing
+1795823390250 pid=62399 child answer kept=1 notKept=0 runs=1
+1795823390279 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823390279 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823390280 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823390280 pid=60056 openReadOnly sq-at-keys-oJMWxk/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823390637 pid=62609 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823390638 pid=62609 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823390638 pid=62609 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823390709 pid=61509 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823390709 pid=61509 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/code.sqlite want=1 missing
+1795823392151 pid=62609 child answer kept=1 notKept=0 runs=1
+1795823392180 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823392180 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823392182 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823392182 pid=61459 openReadOnly sq-at-keys-3rnwMS/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823392451 pid=62721 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823392452 pid=62721 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823392684 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823392684 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/code.sqlite want=1 missing
+1795823392692 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823392692 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/code.sqlite want=1 missing
+1795823392781 pid=62721 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/code.sqlite want=1 null got=0
+1795823393229 pid=62721 child answer kept=0 notKept=0 runs=1
+1795823393262 pid=61509 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823393263 pid=61509 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823393263 pid=61509 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823393263 pid=61509 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823393435 pid=61509 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823393435 pid=61509 openReadOnly sq-at-keys-9Q51da/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823393948 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823393948 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/code.sqlite want=1 missing
+1795823393954 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823393954 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/code.sqlite want=1 missing
+1795823394071 pid=61459 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823394071 pid=61459 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/code.sqlite want=1 missing
+1795823394078 pid=61459 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823394078 pid=61459 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/code.sqlite want=1 missing
+1795823394221 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823394221 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/code.sqlite want=1 missing
+1795823394478 pid=61459 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823394478 pid=61459 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/code.sqlite want=1 missing
+1795823395728 pid=61509 openReadOnly sq-at-keys-jfcUQA/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823395728 pid=61509 openReadOnly sq-at-keys-jfcUQA/main/.git/squeal/code.sqlite want=1 missing
+1795823395738 pid=61509 openReadOnly sq-at-keys-jfcUQA/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823395738 pid=61509 openReadOnly sq-at-keys-jfcUQA/main/.git/squeal/code.sqlite want=1 missing
+1795823396032 pid=63032 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823396034 pid=63032 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823396055 pid=61509 openReadOnly sq-at-keys-jfcUQA/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823396055 pid=61509 openReadOnly sq-at-keys-jfcUQA/main/.git/squeal/code.sqlite want=1 missing
+1795823396259 pid=63064 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823396260 pid=63064 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823396589 pid=63064 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/code.sqlite want=1 null got=0
+1795823396667 pid=63032 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/code.sqlite want=1 null got=0
+1795823397108 pid=63064 child answer kept=0 notKept=0 runs=1
+1795823397136 pid=61459 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823397136 pid=61459 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823397137 pid=61459 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823397137 pid=61459 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823397227 pid=61459 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823397227 pid=61459 openReadOnly sq-at-keys-MHd1DZ/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823397252 pid=63032 child answer kept=0 notKept=0 runs=1
+1795823397282 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823397282 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823397283 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823397283 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823397501 pid=63155 openReadOnly sq-at-keys-jfcUQA/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823397502 pid=63155 openReadOnly sq-at-keys-jfcUQA/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823397599 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823397599 pid=60056 openReadOnly sq-at-keys-JLIRtp/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823398131 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/store.sqlite want=1 missing
+1795823398131 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/code.sqlite want=1 missing
+1795823398132 pid=63155 openReadOnly sq-at-keys-jfcUQA/main/.git/squeal/code.sqlite want=1 null got=0
+1795823398569 pid=63155 child answer kept=0 notKept=0 runs=1
+1795823398612 pid=61509 openReadOnly sq-at-keys-jfcUQA/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823398612 pid=61509 openReadOnly sq-at-keys-jfcUQA/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823398612 pid=61509 openReadOnly sq-at-keys-jfcUQA/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823398612 pid=61509 openReadOnly sq-at-keys-jfcUQA/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823399515 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/store.sqlite want=1 missing
+1795823399515 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/code.sqlite want=1 missing
+1795823399525 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/store.sqlite want=1 missing
+1795823399525 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/code.sqlite want=1 missing
+1795823401172 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823401172 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/code.sqlite want=1 missing
+1795823401179 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823401179 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/code.sqlite want=1 missing
+1795823401210 pid=61509 openReadOnly sq-at-keys-8xcQyi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823401210 pid=61509 openReadOnly sq-at-keys-8xcQyi/main/.git/squeal/code.sqlite want=1 missing
+1795823401219 pid=61509 openReadOnly sq-at-keys-8xcQyi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823401219 pid=61509 openReadOnly sq-at-keys-8xcQyi/main/.git/squeal/code.sqlite want=1 missing
+1795823401281 pid=63422 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/store.sqlite want=1 missing
+1795823401651 pid=61509 openReadOnly sq-at-keys-8xcQyi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823401651 pid=61509 openReadOnly sq-at-keys-8xcQyi/main/.git/squeal/code.sqlite want=1 missing
+1795823401713 pid=63422 child answer kept=undefined notKept=undefined runs=1
+1795823401750 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/store.sqlite want=1 missing
+1795823401750 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/code.sqlite want=1 missing
+1795823402256 pid=63569 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/store.sqlite want=1 missing
+1795823402634 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823402634 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/code.sqlite want=1 missing
+1795823402648 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823402648 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/code.sqlite want=1 missing
+1795823402705 pid=63569 child answer kept=undefined notKept=undefined runs=1
+1795823402745 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/store.sqlite want=1 missing
+1795823402745 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/code.sqlite want=1 missing
+1795823402756 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/store.sqlite want=1 missing
+1795823402756 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/code.sqlite want=1 missing
+1795823403035 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823403035 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/code.sqlite want=1 missing
+1795823403226 pid=63661 openReadOnly sq-at-keys-8xcQyi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823403227 pid=63661 openReadOnly sq-at-keys-8xcQyi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823403656 pid=63661 openReadOnly sq-at-keys-8xcQyi/main/.git/squeal/code.sqlite want=1 null got=0
+1795823404142 pid=63661 child answer kept=0 notKept=0 runs=1
+1795823404179 pid=61509 openReadOnly sq-at-keys-8xcQyi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823404179 pid=61509 openReadOnly sq-at-keys-8xcQyi/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823404179 pid=61509 openReadOnly sq-at-keys-8xcQyi/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823404179 pid=61509 openReadOnly sq-at-keys-8xcQyi/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823404402 pid=63728 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/store.sqlite want=1 missing
+1795823404402 pid=63728 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/store.sqlite want=1 missing
+1795823404402 pid=63728 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/code.sqlite want=1 missing
+1795823404794 pid=63765 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823404795 pid=63765 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823405425 pid=63765 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/code.sqlite want=1 null got=0
+1795823405882 pid=63765 child answer kept=0 notKept=0 runs=1
+1795823405915 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823405915 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823405916 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823405916 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823406150 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823406150 pid=63242 openReadOnly sq-at-keys-yLMxoR/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823406668 pid=61509 openReadOnly sq-at-keys-IA1aUC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823406668 pid=61509 openReadOnly sq-at-keys-IA1aUC/main/.git/squeal/code.sqlite want=1 missing
+1795823406675 pid=61509 openReadOnly sq-at-keys-IA1aUC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823406675 pid=61509 openReadOnly sq-at-keys-IA1aUC/main/.git/squeal/code.sqlite want=1 missing
+1795823407227 pid=61509 openReadOnly sq-at-keys-IA1aUC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823407227 pid=61509 openReadOnly sq-at-keys-IA1aUC/main/.git/squeal/code.sqlite want=1 missing
+1795823408169 pid=63728 child answer kept=1 notKept=0 runs=1
+1795823408191 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823408192 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823408192 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823408193 pid=61459 openReadOnly sq-at-keys-LGvtag/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823408650 pid=61459 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/store.sqlite want=1 missing
+1795823408650 pid=61459 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/code.sqlite want=1 missing
+1795823408853 pid=63242 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823408855 pid=63242 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/code.sqlite want=1 missing
+1795823408867 pid=63242 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823408868 pid=63242 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/code.sqlite want=1 missing
+1795823409010 pid=63982 openReadOnly sq-at-keys-IA1aUC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823409011 pid=63982 openReadOnly sq-at-keys-IA1aUC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823409459 pid=63242 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823409459 pid=63242 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/code.sqlite want=1 missing
+1795823409541 pid=63982 openReadOnly sq-at-keys-IA1aUC/main/.git/squeal/code.sqlite want=1 null got=0
+1795823410020 pid=63982 child answer kept=0 notKept=0 runs=1
+1795823410058 pid=61509 openReadOnly sq-at-keys-IA1aUC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823410058 pid=61509 openReadOnly sq-at-keys-IA1aUC/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823410059 pid=61509 openReadOnly sq-at-keys-IA1aUC/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823410059 pid=61509 openReadOnly sq-at-keys-IA1aUC/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823410332 pid=61459 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/store.sqlite want=1 missing
+1795823410332 pid=61459 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/code.sqlite want=1 missing
+1795823410342 pid=61459 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/store.sqlite want=1 missing
+1795823410343 pid=61459 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/code.sqlite want=1 missing
+1795823411347 pid=64181 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823411349 pid=64181 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823411778 pid=64181 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/code.sqlite want=1 null got=0
+1795823412214 pid=64210 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/store.sqlite want=1 missing
+1795823412359 pid=64181 child answer kept=0 notKept=0 runs=1
+1795823412393 pid=63242 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823412394 pid=63242 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823412395 pid=63242 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823412395 pid=63242 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823412473 pid=63242 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823412473 pid=63242 openReadOnly sq-at-keys-Y3DacB/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823412637 pid=61509 openReadOnly sq-at-keys-R1QGqS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823412637 pid=61509 openReadOnly sq-at-keys-R1QGqS/main/.git/squeal/code.sqlite want=1 missing
+1795823412644 pid=61509 openReadOnly sq-at-keys-R1QGqS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823412644 pid=61509 openReadOnly sq-at-keys-R1QGqS/main/.git/squeal/code.sqlite want=1 missing
+1795823412674 pid=64210 child answer kept=undefined notKept=undefined runs=1
+1795823412706 pid=61459 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/store.sqlite want=1 missing
+1795823412706 pid=61459 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/code.sqlite want=1 missing
+1795823412944 pid=61509 openReadOnly sq-at-keys-R1QGqS/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823412944 pid=61509 openReadOnly sq-at-keys-R1QGqS/main/.git/squeal/code.sqlite want=1 missing
+1795823413232 pid=64323 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/store.sqlite want=1 missing
+1795823413640 pid=64323 child answer kept=undefined notKept=undefined runs=1
+1795823413681 pid=61459 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/store.sqlite want=1 missing
+1795823413682 pid=61459 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/code.sqlite want=1 missing
+1795823414086 pid=64401 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/store.sqlite want=1 missing
+1795823414256 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823414256 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/code.sqlite want=1 missing
+1795823414265 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823414265 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/code.sqlite want=1 missing
+1795823414532 pid=64401 child answer kept=undefined notKept=undefined runs=1
+1795823414568 pid=61459 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/store.sqlite want=1 missing
+1795823414568 pid=61459 openReadOnly sq-at-keys-lr7cBV/main/.git/squeal/code.sqlite want=1 missing
+1795823414605 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823414605 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/code.sqlite want=1 missing
+1795823415932 pid=64594 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823416398 pid=64594 child answer kept=undefined notKept=undefined runs=1
+1795823416594 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823416594 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823416640 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823416640 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823416825 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823416825 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 missing
+1795823416833 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823416833 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 missing
+1795823417264 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823417264 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 missing
+1795823417757 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823417758 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823417765 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823417765 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823417775 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823417775 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823418471 pid=64784 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823418472 pid=64784 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823418801 pid=64784 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 null got=0
+1795823419039 pid=64812 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823419371 pid=64784 child answer kept=0 notKept=0 runs=1
+1795823419400 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823419401 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823419401 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823419401 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823419538 pid=64812 child answer kept=undefined notKept=undefined runs=1
+1795823419574 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823419574 pid=63242 openReadOnly sq-at-keys-9WGEA4/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823421000 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823421000 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823421007 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823421007 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823421016 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823421017 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823422861 pid=64984 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823422862 pid=64984 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823422862 pid=64984 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823423739 pid=64991 openReadOnly sq-at-keys-rj4xzU/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823423739 pid=64991 openReadOnly sq-at-keys-rj4xzU/main/.git/squeal/code.sqlite want=1 missing
+1795823424294 pid=63242 openReadOnly sq-at-keys-W2O2Lc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823424294 pid=63242 openReadOnly sq-at-keys-W2O2Lc/main/.git/squeal/code.sqlite want=1 missing
+1795823424301 pid=63242 openReadOnly sq-at-keys-W2O2Lc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823424301 pid=63242 openReadOnly sq-at-keys-W2O2Lc/main/.git/squeal/code.sqlite want=1 missing
+1795823424487 pid=64991 openReadOnly sq-at-keys-FfFCdf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823424487 pid=64991 openReadOnly sq-at-keys-FfFCdf/main/.git/squeal/code.sqlite want=1 missing
+1795823424488 pid=64984 child answer kept=1 notKept=0 runs=1
+1795823424511 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823424511 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823424512 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823424512 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823425378 pid=64991 openReadOnly sq-at-keys-ySf8K7/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823425378 pid=64991 openReadOnly sq-at-keys-ySf8K7/main/.git/squeal/code.sqlite want=1 missing
+1795823425524 pid=63242 openReadOnly sq-at-keys-W2O2Lc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823425524 pid=63242 openReadOnly sq-at-keys-W2O2Lc/main/.git/squeal/code.sqlite want=1 missing
+1795823425532 pid=63242 openReadOnly sq-at-keys-W2O2Lc/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823425532 pid=63242 openReadOnly sq-at-keys-W2O2Lc/main/.git/squeal/code.sqlite want=1 missing
+1795823425737 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823425738 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823425746 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823425746 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823425757 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823425757 pid=64489 openReadOnly sq-at-keys-gFQkah/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823428016 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823428016 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 missing
+1795823428027 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823428027 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 missing
+1795823428463 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823428463 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 missing
+1795823428733 pid=65224 openReadOnly sq-at-keys-JMOCGw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823428733 pid=65224 openReadOnly sq-at-keys-JMOCGw/main/.git/squeal/code.sqlite want=1 missing
+1795823428743 pid=65224 openReadOnly sq-at-keys-JMOCGw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823428743 pid=65224 openReadOnly sq-at-keys-JMOCGw/main/.git/squeal/code.sqlite want=1 missing
+1795823429110 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823429110 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 missing
+1795823429116 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823429116 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 missing
+1795823429127 pid=65224 openReadOnly sq-at-keys-JMOCGw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823429127 pid=65224 openReadOnly sq-at-keys-JMOCGw/main/.git/squeal/code.sqlite want=1 missing
+1795823429419 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823429419 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 missing
+1795823430001 pid=65578 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823430002 pid=65578 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823430531 pid=65578 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 null got=0
+1795823430920 pid=65610 openReadOnly sq-at-keys-JMOCGw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823430921 pid=65610 openReadOnly sq-at-keys-JMOCGw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823431026 pid=65610 openReadOnly sq-at-keys-JMOCGw/main/.git/squeal/code.sqlite want=1 null got=0
+1795823431151 pid=65578 child answer kept=0 notKept=0 runs=1
+1795823431183 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823431183 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823431187 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823431187 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823431335 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823431335 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823431394 pid=65636 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823431395 pid=65636 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823431396 pid=65636 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 null got=0
+1795823431751 pid=65177 openReadOnly sq-at-keys-JMOCGw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823431751 pid=65177 openReadOnly sq-at-keys-JMOCGw/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823431914 pid=65636 child answer kept=0 notKept=0 runs=1
+1795823431936 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823431936 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823431937 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823431937 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823432139 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823432139 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823432455 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823432471 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823432478 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823432479 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823432488 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823432488 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823432739 pid=65177 openReadOnly sq-at-keys-JMOCGw/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823432739 pid=65177 openReadOnly sq-at-keys-JMOCGw/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823433549 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823433549 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823433556 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823433556 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823433566 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823433566 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823433960 pid=65886 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823433961 pid=65886 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823433961 pid=65886 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823434422 pid=65934 openReadOnly sq-at-keys-brGNn8/main/.git/squeal/store.sqlite want=1 missing
+1795823434422 pid=65934 openReadOnly sq-at-keys-brGNn8/main/.git/squeal/code.sqlite want=1 missing
+1795823435033 pid=65986 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823435034 pid=65986 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823435034 pid=65986 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823435275 pid=65886 child answer kept=1 notKept=0 runs=1
+1795823435299 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823435299 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823435300 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823435300 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823435882 pid=65934 openReadOnly sq-at-keys-brGNn8/main/.git/squeal/store.sqlite want=1 missing
+1795823435882 pid=65934 openReadOnly sq-at-keys-brGNn8/main/.git/squeal/code.sqlite want=1 missing
+1795823435896 pid=65934 openReadOnly sq-at-keys-brGNn8/main/.git/squeal/store.sqlite want=1 missing
+1795823435896 pid=65934 openReadOnly sq-at-keys-brGNn8/main/.git/squeal/code.sqlite want=1 missing
+1795823435909 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823435910 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823436929 pid=65986 child answer kept=1 notKept=0 runs=1
+1795823436951 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823436952 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823436952 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823436952 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823437480 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823437480 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823437494 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823437494 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823437721 pid=66163 openReadOnly sq-at-keys-brGNn8/main/.git/squeal/store.sqlite want=1 missing
+1795823438240 pid=65177 openReadOnly sq-at-keys-brGNn8/main/.git/squeal/store.sqlite want=1 missing
+1795823438240 pid=65177 openReadOnly sq-at-keys-brGNn8/main/.git/squeal/code.sqlite want=1 missing
+1795823438406 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823438406 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823438413 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823438413 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823438423 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823438423 pid=64489 openReadOnly sq-at-keys-7dgKAX/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823438864 pid=66283 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823439317 pid=66283 child answer kept=undefined notKept=undefined runs=1
+1795823439351 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823439351 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823439358 pid=65177 openReadOnly sq-at-keys-brGNn8/main/.git/squeal/store.sqlite want=1 missing
+1795823439358 pid=65177 openReadOnly sq-at-keys-brGNn8/main/.git/squeal/code.sqlite want=1 missing
+1795823440138 pid=66529 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823440593 pid=66529 child answer kept=undefined notKept=undefined runs=1
+1795823440634 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823440634 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823440684 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823440684 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823441756 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/store.sqlite want=1 missing
+1795823441756 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/code.sqlite want=1 missing
+1795823443517 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823443517 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 missing
+1795823443527 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823443527 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 missing
+1795823443551 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/store.sqlite want=1 missing
+1795823443552 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/code.sqlite want=1 missing
+1795823443564 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/store.sqlite want=1 missing
+1795823443564 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/code.sqlite want=1 missing
+1795823444032 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823444032 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 missing
+1795823444097 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823444098 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823444106 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823444106 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823444119 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823444120 pid=65254 openReadOnly sq-at-keys-LinzJ3/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823446086 pid=67036 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/store.sqlite want=1 missing
+1795823446525 pid=67051 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823446527 pid=67051 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823446715 pid=67036 child answer kept=undefined notKept=undefined runs=1
+1795823446755 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/store.sqlite want=1 missing
+1795823446755 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/code.sqlite want=1 missing
+1795823446856 pid=67051 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 null got=0
+1795823447369 pid=67114 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/store.sqlite want=1 missing
+1795823447515 pid=67051 child answer kept=0 notKept=0 runs=1
+1795823447546 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823447546 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823447547 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823447547 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823447711 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823447712 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823447866 pid=67114 child answer kept=undefined notKept=undefined runs=1
+1795823447908 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/store.sqlite want=1 missing
+1795823447908 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/code.sqlite want=1 missing
+1795823448654 pid=67198 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/store.sqlite want=1 missing
+1795823449040 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823449040 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 missing
+1795823449051 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823449051 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 missing
+1795823449179 pid=67198 child answer kept=undefined notKept=undefined runs=1
+1795823449215 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/store.sqlite want=1 missing
+1795823449215 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/code.sqlite want=1 missing
+1795823449475 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823449476 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823449495 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823449496 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823449521 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823449521 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823449620 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823449620 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 missing
+1795823449741 pid=67293 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/store.sqlite want=1 missing
+1795823450260 pid=67293 child answer kept=undefined notKept=undefined runs=1
+1795823450305 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/store.sqlite want=1 missing
+1795823450305 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/code.sqlite want=1 missing
+1795823450700 pid=67390 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/store.sqlite want=1 missing
+1795823451229 pid=67390 child answer kept=undefined notKept=undefined runs=1
+1795823451263 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/store.sqlite want=1 missing
+1795823451263 pid=66787 openReadOnly sq-at-keys-nCNk8Q/main/.git/squeal/code.sqlite want=1 missing
+1795823451474 pid=67425 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823451475 pid=67425 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823451475 pid=67425 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823451589 pid=66787 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/store.sqlite want=1 missing
+1795823451589 pid=66787 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/code.sqlite want=1 missing
+1795823451718 pid=67459 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823451719 pid=67459 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823451898 pid=67459 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 null got=0
+1795823452324 pid=67459 child answer kept=0 notKept=0 runs=1
+1795823452361 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823452361 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823452361 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823452361 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823452574 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823452575 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823452743 pid=66787 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/store.sqlite want=1 missing
+1795823452743 pid=66787 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/code.sqlite want=1 missing
+1795823452752 pid=66787 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/store.sqlite want=1 missing
+1795823452752 pid=66787 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/code.sqlite want=1 missing
+1795823453158 pid=67425 child answer kept=1 notKept=0 runs=1
+1795823453184 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823453184 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823453185 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823453185 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823453966 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823453966 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823453980 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823453980 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823453995 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823453996 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823454194 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823454194 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823454206 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823454206 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823454218 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823454218 pid=64489 openReadOnly sq-at-keys-XiLrFf/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823454257 pid=67670 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/store.sqlite want=1 missing
+1795823454696 pid=67670 child answer kept=undefined notKept=undefined runs=1
+1795823454728 pid=66787 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/store.sqlite want=1 missing
+1795823454728 pid=66787 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/code.sqlite want=1 missing
+1795823455432 pid=67779 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/store.sqlite want=1 missing
+1795823455566 pid=67789 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823455568 pid=67789 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823455568 pid=67789 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823456024 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 missing
+1795823456024 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 missing
+1795823456032 pid=67779 child answer kept=undefined notKept=undefined runs=1
+1795823456059 pid=66787 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/store.sqlite want=1 missing
+1795823456059 pid=66787 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/code.sqlite want=1 missing
+1795823456467 pid=67890 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/store.sqlite want=1 missing
+1795823456925 pid=67890 child answer kept=undefined notKept=undefined runs=1
+1795823456953 pid=66787 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/store.sqlite want=1 missing
+1795823456953 pid=66787 openReadOnly sq-at-keys-ZVf8wP/main/.git/squeal/code.sqlite want=1 missing
+1795823457232 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 missing
+1795823457232 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 missing
+1795823457241 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 missing
+1795823457241 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 missing
+1795823457275 pid=67789 child answer kept=1 notKept=0 runs=1
+1795823457301 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823457301 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823457302 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823457302 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823457970 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823457970 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823458761 pid=68069 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 missing
+1795823459035 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823459035 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823459046 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823459046 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823459222 pid=68069 child answer kept=undefined notKept=undefined runs=1
+1795823459252 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 missing
+1795823459252 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 missing
+1795823459404 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 missing
+1795823459404 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 missing
+1795823459773 pid=68154 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 missing
+1795823460271 pid=68154 child answer kept=undefined notKept=undefined runs=1
+1795823460315 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 missing
+1795823460315 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 missing
+1795823460326 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 missing
+1795823460326 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 missing
+1795823460427 pid=68274 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823460435 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 missing
+1795823460435 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 missing
+1795823460445 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 missing
+1795823460445 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 missing
+1795823460870 pid=68274 child answer kept=undefined notKept=undefined runs=1
+1795823460907 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823460907 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823461814 pid=68376 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823462068 pid=68408 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 missing
+1795823462069 pid=68408 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 missing
+1795823462069 pid=68408 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 missing
+1795823462187 pid=68418 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 missing
+1795823462508 pid=68376 child answer kept=undefined notKept=undefined runs=1
+1795823462544 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823462544 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823462557 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823462557 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823462742 pid=68418 child answer kept=undefined notKept=undefined runs=1
+1795823462775 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 missing
+1795823462775 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 missing
+1795823463301 pid=68518 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 missing
+1795823463706 pid=68518 child answer kept=undefined notKept=undefined runs=1
+1795823463748 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 missing
+1795823463748 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 missing
+1795823463758 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 missing
+1795823463758 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 missing
+1795823464389 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823464389 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823464396 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823464396 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823464405 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823464405 pid=65254 openReadOnly sq-at-keys-P13BMN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823464870 pid=68408 child answer kept=1 notKept=0 runs=1
+1795823464896 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823464896 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823464897 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823464898 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823465061 pid=68675 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 missing
+1795823465062 pid=68675 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 missing
+1795823465062 pid=68675 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 missing
+1795823465137 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823465138 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823466310 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/store.sqlite want=1 missing
+1795823466310 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/code.sqlite want=1 missing
+1795823466335 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823466335 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823466349 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823466349 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823467299 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/store.sqlite want=1 missing
+1795823467299 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/code.sqlite want=1 missing
+1795823467309 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/store.sqlite want=1 missing
+1795823467309 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/code.sqlite want=1 missing
+1795823467796 pid=68864 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823468161 pid=68675 child answer kept=0 notKept=1 runs=1
+1795823468184 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823468184 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823468186 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823468186 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823468237 pid=68864 child answer kept=undefined notKept=undefined runs=1
+1795823468273 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823468273 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823468459 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823468459 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823468848 pid=68914 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823469013 pid=68946 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/store.sqlite want=1 missing
+1795823469167 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823469168 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823469402 pid=68914 child answer kept=undefined notKept=undefined runs=1
+1795823469431 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823469431 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823469442 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823469442 pid=67834 openReadOnly sq-at-keys-peWCjN/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823469540 pid=68946 child answer kept=undefined notKept=undefined runs=1
+1795823469568 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/store.sqlite want=1 missing
+1795823469568 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/code.sqlite want=1 missing
+1795823470162 pid=69049 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/store.sqlite want=1 missing
+1795823470617 pid=69049 child answer kept=undefined notKept=undefined runs=1
+1795823470637 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823470663 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/store.sqlite want=1 missing
+1795823470663 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/code.sqlite want=1 missing
+1795823470673 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/store.sqlite want=1 missing
+1795823470673 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/code.sqlite want=1 missing
+1795823470908 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823470908 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/code.sqlite want=1 missing
+1795823472100 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823472100 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/code.sqlite want=1 missing
+1795823472111 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823472111 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/code.sqlite want=1 missing
+1795823472130 pid=69198 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/store.sqlite want=1 missing
+1795823472130 pid=69198 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/store.sqlite want=1 missing
+1795823472130 pid=69198 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/code.sqlite want=1 missing
+1795823472253 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823472253 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823473578 pid=69341 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823473812 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823473812 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823473812 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823473812 pid=68099 openReadOnly sq-at-keys-Ixit4Y/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823474036 pid=69341 child answer kept=undefined notKept=undefined runs=1
+1795823474064 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823474064 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/code.sqlite want=1 missing
+1795823474525 pid=69198 child answer kept=0 notKept=1 runs=1
+1795823474564 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823474565 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823474567 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823474567 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823474642 pid=69395 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823474837 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823474837 pid=65254 openReadOnly sq-at-keys-K3RkWb/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823475074 pid=69395 child answer kept=undefined notKept=undefined runs=1
+1795823475115 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823475115 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/code.sqlite want=1 missing
+1795823475521 pid=69475 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823475826 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823475826 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/code.sqlite want=1 missing
+1795823475834 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823475834 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/code.sqlite want=1 missing
+1795823476039 pid=69475 child answer kept=undefined notKept=undefined runs=1
+1795823476077 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823476078 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/code.sqlite want=1 missing
+1795823476089 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823476089 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/code.sqlite want=1 missing
+1795823476334 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823476334 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/code.sqlite want=1 missing
+1795823477994 pid=69673 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823478094 pid=69683 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823478095 pid=69683 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823478129 pid=69683 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/code.sqlite want=1 null got=0
+1795823478138 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823478138 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/code.sqlite want=1 missing
+1795823478152 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823478153 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/code.sqlite want=1 missing
+1795823478598 pid=69673 child answer kept=undefined notKept=undefined runs=1
+1795823478637 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823478637 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/code.sqlite want=1 missing
+1795823478660 pid=69683 child answer kept=0 notKept=0 runs=1
+1795823478694 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823478694 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823478695 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823478695 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823478815 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823478815 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823479056 pid=69812 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823479123 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823479123 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/code.sqlite want=1 missing
+1795823479130 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823479130 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/code.sqlite want=1 missing
+1795823479399 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823479400 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/code.sqlite want=1 missing
+1795823479510 pid=69812 child answer kept=undefined notKept=undefined runs=1
+1795823479550 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/store.sqlite want=1 missing
+1795823479550 pid=67834 openReadOnly sq-at-keys-8yr1Nd/main/.git/squeal/code.sqlite want=1 missing
+1795823479885 pid=67834 openReadOnly sq-at-keys-paVC44/main/.git/squeal/store.sqlite want=1 missing
+1795823479885 pid=67834 openReadOnly sq-at-keys-paVC44/main/.git/squeal/code.sqlite want=1 missing
+1795823479967 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823479967 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823479975 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823479975 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823479986 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823479986 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823481044 pid=67834 openReadOnly sq-at-keys-paVC44/main/.git/squeal/store.sqlite want=1 missing
+1795823481044 pid=67834 openReadOnly sq-at-keys-paVC44/main/.git/squeal/code.sqlite want=1 missing
+1795823481052 pid=67834 openReadOnly sq-at-keys-paVC44/main/.git/squeal/store.sqlite want=1 missing
+1795823481052 pid=67834 openReadOnly sq-at-keys-paVC44/main/.git/squeal/code.sqlite want=1 missing
+1795823481534 pid=70052 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823481535 pid=70052 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823481536 pid=70052 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823481834 pid=70079 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823481835 pid=70079 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823481835 pid=70079 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823482445 pid=70137 openReadOnly sq-at-keys-paVC44/main/.git/squeal/store.sqlite want=1 missing
+1795823482898 pid=70052 child answer kept=1 notKept=0 runs=1
+1795823482900 pid=70137 child answer kept=undefined notKept=undefined runs=1
+1795823482923 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823482923 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823482924 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823482924 pid=69561 openReadOnly sq-at-keys-kdLUMV/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823482933 pid=67834 openReadOnly sq-at-keys-paVC44/main/.git/squeal/store.sqlite want=1 missing
+1795823482933 pid=67834 openReadOnly sq-at-keys-paVC44/main/.git/squeal/code.sqlite want=1 missing
+1795823483165 pid=70079 child answer kept=0 notKept=1 runs=1
+1795823483189 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823483189 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823483190 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823483190 pid=69378 openReadOnly sq-at-keys-l0KDGn/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823483865 pid=70292 openReadOnly sq-at-keys-yZsIGo/main/.git/squeal/store.sqlite want=1 missing
+1795823484210 pid=70292 openReadOnly sq-at-keys-xZ2Ytr/main/.git/squeal/store.sqlite want=1 missing
+1795823485262 pid=70251 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823485262 pid=70251 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/code.sqlite want=1 missing
+1795823485270 pid=70251 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823485270 pid=70251 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/code.sqlite want=1 missing
+1795823485418 pid=70300 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823485418 pid=70300 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/code.sqlite want=1 missing
+1795823485424 pid=70300 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823485424 pid=70300 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/code.sqlite want=1 missing
+1795823485536 pid=70251 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823485536 pid=70251 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/code.sqlite want=1 missing
+1795823485691 pid=70300 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823485691 pid=70300 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/code.sqlite want=1 missing
+1795823487086 pid=70568 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823487087 pid=70568 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823487182 pid=70578 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823487183 pid=70578 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823487316 pid=70568 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/code.sqlite want=1 null got=0
+1795823487513 pid=70578 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/code.sqlite want=1 null got=0
+1795823487826 pid=70568 child answer kept=0 notKept=0 runs=1
+1795823487852 pid=70251 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823487852 pid=70251 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823487853 pid=70251 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823487853 pid=70251 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823487963 pid=70251 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823487963 pid=70251 openReadOnly sq-at-keys-WuWPKq/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823487973 pid=70578 child answer kept=0 notKept=0 runs=1
+1795823488000 pid=70300 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823488000 pid=70300 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823488000 pid=70300 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823488000 pid=70300 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/code.sqlite want=1 ok got=1
+1795823488105 pid=70300 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/store.sqlite want=1 ok got=1
+1795823488105 pid=70300 openReadOnly sq-at-keys-dLTlEz/main/.git/squeal/code.sqlite want=1 ok got=1

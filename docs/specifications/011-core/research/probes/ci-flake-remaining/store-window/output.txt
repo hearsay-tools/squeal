@@ -1,0 +1,5 @@
+0. no code.sqlite yet | readStores stores, code missing | 0 ms
+   code.sqlite user_version: 0
+1. code.sqlite created, schema version not yet set | readStores null (gate keeps nothing) | 0 ms
+2. another process holds a creating transaction (3 s) | readStores null (gate keeps nothing) | 1002 ms
+3. code.sqlite created and migrated | readStores stores, code open | 1 ms

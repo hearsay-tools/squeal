@@ -1,0 +1,19 @@
+
+ RUN  v5.0.3 /home/user/squeal
+
+(node:14807) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:14806) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |isolated| test/cli/proof-not-kept.test.ts (1 test) 11573ms
+   ✓ a run file the gate does not keep names the gate's reason (row 023-18 D2) (1)
+     ✓ squeal proof 11571ms
+ ✓ |isolated| test/cli/proof-kept-key.test.ts (1 test) 13442ms
+   ✓ squeal proof reads each run side at its stored key (row 023-18 D1) (1)
+     ✓ says both sides are stored on the first call, and reads them on the second 13441ms
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  23:29:40
+   Duration  18.59s (tests 71%, transform 24%, import 5%)
+

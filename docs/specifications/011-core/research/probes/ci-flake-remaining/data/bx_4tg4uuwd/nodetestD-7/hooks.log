@@ -1,0 +1,2 @@
+1795824262221 session-start 262ms printed=true stderr=""
+1795824274905 post-tool-batch 953ms printed=false stderr="squeal post-tool-batch hook: Error: database is locked: the worktree's write lease is held by 42594 <vitest worker>"

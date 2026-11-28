@@ -1,0 +1,7 @@
+(node:15199) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:15233) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+squeal: the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores
+squeal: 1 completed test file was not kept in the stores, because it read paths first seen during the run (src/package.json): test/a.test.ts; the next run will run it again
+squeal: 0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it

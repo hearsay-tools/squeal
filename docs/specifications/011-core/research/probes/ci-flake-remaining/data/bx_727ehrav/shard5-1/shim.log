@@ -1,0 +1,63 @@
+1795823250.764582749 pid=47728 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=rev-parse --path-format=absolute --git-common-dir
+1795823250.925699724 pid=47757 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=rev-parse --show-object-format
+1795823250.938943378 pid=47759 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=rev-parse --show-object-format
+1795823250.946489214 pid=47761 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=rev-parse --git-path index
+1795823250.952010418 pid=47763 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=ls-files -u -z
+1795823250.956037019 pid=47766 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=ls-files -z --cached --others --exclude-standard
+1795823250.961092658 pid=47769 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=config --get core.autocrlf
+1795823250.964040619 pid=47772 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=ls-files --stage -v -z
+1795823250.966120715 pid=47777 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=status --porcelain=v1 -z --untracked-files=no --ignore-submodules=all --no-renames
+1795823250.969416636 pid=47785 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=check-attr -z --stdin eol text crlf filter ident working-tree-encoding
+1795823250.974096082 pid=47787 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=--no-optional-locks status --porcelain=v1 -z --untracked-files=normal --ignore-submodules=all
+1795823253.573062653 pid=48141 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=config --get core.autocrlf
+1795823253.576776178 pid=48145 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=ls-files --stage -v -z
+1795823253.581388354 pid=48148 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=status --porcelain=v1 -z --untracked-files=no --ignore-submodules=all --no-renames
+1795823253.577441321 pid=48141 CLAIMED before= e x p o r t c o n s t w h i c h = " n e w " ; 
+ 
+1795823253.584019883 pid=48141 WROTE after= e x p o r t c o n s t w h i c h = " o l d " ; 
+ 
+1795823253.589079147 pid=48161 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=check-attr -z --stdin eol text crlf filter ident working-tree-encoding
+1795823253.596509091 pid=48164 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=check-ignore -z --stdin
+1795823253.619987566 pid=48167 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=--no-optional-locks status --porcelain=v1 -z --untracked-files=all --no-renames --ignore-submodules=all
+1795823253.646722663 pid=48173 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=ls-files -z --others --ignored --exclude-standard --directory
+1795823253.651442540 pid=48177 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=config -z --file .gitmodules --get-regexp ^submodule\..*\.path$
+1795823253.664642809 pid=48182 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=check-ignore -z --stdin
+1795823253.674390853 pid=48190 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=--no-optional-locks status --porcelain=v1 -z --untracked-files=all --no-renames --ignore-submodules=all
+1795823253.679704897 pid=48194 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=ls-files -z --others --ignored --exclude-standard --directory
+1795823253.685731836 pid=48196 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=config -z --file .gitmodules --get-regexp ^submodule\..*\.path$
+1795823253.698222836 pid=48202 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=check-ignore -z --stdin
+1795823253.704625746 pid=48215 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=ls-files -z --cached
+1795823253.727892164 pid=48219 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=--no-optional-locks status --porcelain=v1 -z --untracked-files=normal --ignore-submodules=all
+1795823254.666657138 pid=48485 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=check-ignore -z --stdin
+1795823254.674825905 pid=48500 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=check-ignore -z --stdin
+1795823254.688714601 pid=48504 ppid=47577 root=…/817870b1-b833-4007-826e-5928581f082b args=--no-optional-locks status --porcelain=v1 -z --untracked-files=normal --ignore-submodules=all
+1795823255.470869039 pid=48576 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=rev-parse --path-format=absolute --git-common-dir
+1795823255.614689204 pid=48612 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=rev-parse --show-object-format
+1795823255.625581648 pid=48617 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=rev-parse --show-object-format
+1795823255.633573240 pid=48629 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=rev-parse --git-path index
+1795823255.640734312 pid=48631 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=ls-files -u -z
+1795823255.650145553 pid=48635 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=ls-files -z --cached --others --exclude-standard
+1795823255.656907229 pid=48637 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=config --get core.autocrlf
+1795823255.661565324 pid=48639 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=ls-files --stage -v -z
+1795823255.661979292 pid=48641 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=status --porcelain=v1 -z --untracked-files=no --ignore-submodules=all --no-renames
+1795823255.670925359 pid=48643 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=check-attr -z --stdin eol text crlf filter ident working-tree-encoding
+1795823255.682054496 pid=48645 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=--no-optional-locks status --porcelain=v1 -z --untracked-files=normal --ignore-submodules=all
+1795823258.160166811 pid=49034 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=config --get core.autocrlf
+1795823258.162402940 pid=49036 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=ls-files --stage -v -z
+1795823258.162832391 pid=49034 CLAIMED before= e x p o r t c o n s t w h i c h = " n e w " ; 
+ 
+1795823258.165046818 pid=49040 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=status --porcelain=v1 -z --untracked-files=no --ignore-submodules=all --no-renames
+1795823258.166425326 pid=49034 WROTE after= e x p o r t c o n s t w h i c h = " o l d " ; 
+ 
+1795823258.171633382 pid=49052 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=check-attr -z --stdin eol text crlf filter ident working-tree-encoding
+1795823258.177395956 pid=49055 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=check-ignore -z --stdin
+1795823258.188205756 pid=49062 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=--no-optional-locks status --porcelain=v1 -z --untracked-files=all --no-renames --ignore-submodules=all
+1795823258.208423834 pid=49067 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=ls-files -z --others --ignored --exclude-standard --directory
+1795823258.212057970 pid=49071 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=config -z --file .gitmodules --get-regexp ^submodule\..*\.path$
+1795823258.216404019 pid=49076 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=check-ignore -z --stdin
+1795823258.225398499 pid=49088 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=--no-optional-locks status --porcelain=v1 -z --untracked-files=all --no-renames --ignore-submodules=all
+1795823258.229407334 pid=49093 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=ls-files -z --others --ignored --exclude-standard --directory
+1795823258.231239189 pid=49096 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=config -z --file .gitmodules --get-regexp ^submodule\..*\.path$
+1795823258.235255096 pid=49099 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=check-ignore -z --stdin
+1795823258.239418151 pid=49102 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=ls-files -z --cached
+1795823258.247799376 pid=49107 ppid=48463 root=…/cd3be8d1-6df2-464d-9146-9d786668d449 args=--no-optional-locks status --porcelain=v1 -z --untracked-files=normal --ignore-submodules=all

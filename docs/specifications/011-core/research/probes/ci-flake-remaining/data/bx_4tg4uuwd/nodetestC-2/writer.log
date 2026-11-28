@@ -1,0 +1,3 @@
+1795823871242 pid=24893 lease taken
+1795823871249 pid=24893 write release=true answered=true
+1795823871500 pid=24893 write-status threw Error: no answer from <runtime>/squeal-e2c3aeabc211588b.sock in 250 ms

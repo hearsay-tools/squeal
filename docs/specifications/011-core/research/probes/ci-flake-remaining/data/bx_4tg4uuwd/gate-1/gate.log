@@ -1,0 +1,6 @@
+1795823343891 tool=bash ms=0 blocked=false
+1795823345428 tool=write ms=5 blocked=true
+1795823345433 tool=write ms=1 blocked=false
+1795823346620 tool=bash ms=0 blocked=false
+1795823348159 tool=write ms=5 blocked=true
+1795823348164 tool=write ms=1 blocked=false

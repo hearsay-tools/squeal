@@ -1,0 +1,92 @@
+112:     ✓ counts a Playwright-style expect error without the AssertionError name as an assertion 6445ms
+215: FAIL  |isolated| test/cli/proof-conditions.test.ts > squeal proof conditions (row 023-11, D5.3) > proves a hidden HOME dependency with --without: the old test read the file, the new one does not
+216:AssertionError: expected { project: '', …(11) } to match object { reason: null, …(2) }
+219:- Expected
+220:+ Received
+225:-     "from": "store",
+226:-     "runs": 0,
+227:+     "from": "run",
+228:+     "runs": 1,
+234: ❯ test/cli/proof-conditions.test.ts:92:18
+244: FAIL  |isolated| test/cli/proof-copy.test.ts > squeal proof copies and storing (row 023-08, D5.2) > copies a test-side helper at the test version: a helper-only fix is a test case, proven
+245:AssertionError: expected { project: '', …(11) } to match object { verdict: 'proven', red: { …(2) } }
+248:- Expected
+249:+ Received
+254:-     "stored": true,
+255:+     "stored": false,
+260: ❯ test/cli/proof-copy.test.ts:50:29
+270: FAIL  |isolated| test/cli/proof-evidence.test.ts > squeal proof red evidence (row 023-22, #244) > keeps a beforeEach failure red for another reason, and --red-error accepts it
+271:AssertionError: expected { project: '', …(11) } to match object { verdict: 'proven', …(4) }
+274:- Expected
+275:+ Received
+283:-     "from": "store",
+284:+     "from": "run",
+289: ❯ test/cli/proof-evidence.test.ts:126:31
+299: FAIL  |isolated| test/cli/proof-green-daemon.test.ts > squeal proof's green side on the commit daemon (row 023-42, D7.6) > runs green there first, then reads its stored result at the temporary checkout's key
+300:AssertionError: expected { project: '', …(11) } to match object { verdict: 'proven', …(2) }
+303:- Expected
+304:+ Received
+312:-     "from": "store",
+313:+     "from": "run",
+318: ❯ test/cli/proof-green-daemon.test.ts:97:29
+328: FAIL  |isolated| test/cli/proof-kept-key.test.ts > squeal proof reads each run side at its stored key (row 023-18 D1) > says both sides are stored on the first call, and reads them on the second
+329:AssertionError: expected { project: '', …(11) } to match object { verdict: 'proven', …(2) }
+332:- Expected
+333:+ Received
+341:-     "notStored": null,
+342:-     "stored": true,
+343:+     "notStored": "the gate did not keep it and gave no reason",
+344:+     "stored": false,
+349: ❯ test/cli/proof-kept-key.test.ts:42:28
+359: FAIL  |isolated| test/cli/proof-legacy.test.ts > squeal proof with failures stored before 023-22 (review wave-14 B2) > runs a legacy hook assertion's side again and reads the hook: exit 3, never proven
+360:AssertionError: expected 0 to be greater than 0
+361: ❯ test/cli/proof-legacy.test.ts:96:22
+371: FAIL  |isolated| test/cli/proof-removals.test.ts > squeal proof: test-side removals and stops before the case (row 023-21, D5.2) > B1: removes a --with path the test version deleted; red passes (not red), and reuse 
+372:AssertionError: expected { project: '', …(11) } to match object { verdict: 'not red', red: { …(3) } }
+375:- Expected
+376:+ Received
+382:-     "stored": true,
+383:+     "stored": false,
+388: ❯ test/cli/proof-removals.test.ts:79:28
+398: FAIL  |isolated| test/cli/proof-repeat.test.ts > squeal proof --repeat (row 023-11, D5.4) > reads not comparable (budget) with a rerun line when the budget leaves a run not started
+399:AssertionError: expected { project: '', …(11) } to match object { verdict: 'not comparable', …(2) }
+402:- Expected
+403:+ Received
+406:-   "reason": "budget",
+407:+   "reason": "its commit daemon at 3817a31c7: the daemon did not answer before the deadline",
+410:-     "reason": "not run (budget)",
+411:+     "reason": "its commit daemon at 3817a31c7: the daemon did not answer before the deadline",
+417: ❯ test/cli/proof-repeat.test.ts:84:29
+427: FAIL  |isolated| test/cli/proof-review.test.ts > squeal proof review wave-8 (row 023-08) > B1: each project's red side is its own: first call and reuse agree
+428:AssertionError: expected { …(2) } to deeply equal { assert: [ 'proven', …(1) ], …(1) }
+430:- Expected
+431:+ Received
+435:-     "proven",
+436:-     [
+437:-       "assertion",
+438:-     ],
+439:+     "not comparable",
+440:+     [],
+443:-     "red for another reason",
+444:-     [
+445:-       "error",
+446:-     ],
+447:+     "not comparable",
+448:+     [],
+452: ❯ test/cli/proof-review.test.ts:67:36
+462: FAIL  |isolated| test/cli/proof-with.test.ts > squeal proof: an unchanged test's changed files (row 023-21, D5.2) > proves with --with on two helpers (one added, loaded through the other) and --source on the fix, th
+463:AssertionError: expected { project: '', …(11) } to match object { verdict: 'proven', …(2) }
+466:- Expected
+467:+ Received
+475:-     "stored": true,
+476:+     "stored": false,
+481: ❯ test/cli/proof-with.test.ts:269:28
+491: FAIL  |isolated| test/cli/proof.test.ts > squeal proof (row 023-08, D5) > proves a source fix with the red side's assertion, and a second call runs nothing
+492:AssertionError: expected { project: '', …(11) } to match object { verdict: 'proven', red: { …(3) } }
+495:- Expected
+496:+ Received
+502:-     "stored": true,
+503:+     "stored": false,
+508: ❯ test/cli/proof.test.ts:35:18
+ Test Files  11 failed | 15 passed (26)
+      Tests  11 failed | 114 passed (125)

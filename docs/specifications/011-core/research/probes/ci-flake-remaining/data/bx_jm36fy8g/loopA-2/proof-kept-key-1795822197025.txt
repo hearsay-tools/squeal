@@ -1,0 +1,103 @@
+stderr:
+
+report:
+{
+  "version": "squeal-proof/1",
+  "case": "source",
+  "base": "ad29484a29111cdd516bfcca9ccdbccbb4955af0",
+  "head": "50bfa9a57c777b4c3def7b0682ab8b41f7232edc",
+  "red": {
+    "tests": "50bfa9a57c777b4c3def7b0682ab8b41f7232edc",
+    "code": "ad29484a29111cdd516bfcca9ccdbccbb4955af0",
+    "with": [],
+    "source": []
+  },
+  "green": {
+    "tests": "50bfa9a57c777b4c3def7b0682ab8b41f7232edc",
+    "code": "50bfa9a57c777b4c3def7b0682ab8b41f7232edc",
+    "with": [],
+    "source": []
+  },
+  "withUnused": [],
+  "sourceUnused": [],
+  "withRerun": null,
+  "sourceRerun": null,
+  "dirty": [],
+  "timeoutSeconds": 600,
+  "usedMs": 10735,
+  "runs": 2,
+  "conditions": {
+    "env": [],
+    "without": [],
+    "homeKeep": []
+  },
+  "repeat": 1,
+  "redErrors": [],
+  "notRun": 0,
+  "rerun": null,
+  "checkoutMs": {
+    "red": 6198,
+    "control": null,
+    "green": 4511
+  },
+  "counts": {
+    "proven": 1,
+    "not red": 0,
+    "red for another reason": 0,
+    "not green": 0,
+    "not comparable": 0
+  },
+  "files": [
+    {
+      "project": "",
+      "path": "test/a.test.ts",
+      "verdict": "proven",
+      "reason": null,
+      "evidence": "assertion",
+      "red": {
+        "end": "fail",
+        "reason": null,
+        "from": "run",
+        "stored": true,
+        "notStored": null,
+        "runs": 1,
+        "failures": [
+          {
+            "test": "value",
+            "kind": "assertion",
+            "text": "      AssertionError: expected 1 to be 2 // Object.is equality\n          at test/a.test.ts:5:59\n          at file://<vitest worker>          at file://<vitest worker>          at file://<vitest worker>          at new Promise (<anonymous>)\n          at runWithCancel (file://<vitest worker>          at file://<vitest worker>          at new Promise (<anonymous>)\n          at runWithTimeout (file://<vitest worker>          at file://<vitest worker>      - Expected\n      + Received\n      \n      - 2\n      + 1",
+            "errors": [
+              {
+                "name": "AssertionError",
+                "message": "expected 1 to be 2 // Object.is equality",
+                "stack": "AssertionError: expected 1 to be 2 // Object.is equality\n    at test/a.test.ts:5:59\n    at file://<vitest worker>    at file://<vitest worker>    at file://<vitest worker>    at new Promise (<anonymous>)\n    at runWithCancel (file://<vitest worker>    at file://<vitest worker>    at new Promise (<anonymous>)\n    at runWithTimeout (file://<vitest worker>    at file://<vitest worker>",
+                "location": {
+                  "path": "test/a.test.ts",
+                  "line": 5,
+                  "column": 59
+                },
+                "diff": "- Expected\n+ Received\n\n- 2\n+ 1",
+                "assertionEvidence": true,
+                "stage": "body"
+              }
+            ]
+          }
+        ]
+      },
+      "green": {
+        "end": "pass",
+        "reason": null,
+        "from": "run",
+        "stored": true,
+        "notStored": null,
+        "runs": 1,
+        "failures": []
+      },
+      "greenNotRun": null,
+      "control": null,
+      "controlReading": null,
+      "controlNotRun": null,
+      "changedImports": null
+    }
+  ]
+}

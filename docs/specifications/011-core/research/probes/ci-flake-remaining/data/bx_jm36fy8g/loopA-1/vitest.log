@@ -1,0 +1,69 @@
+
+ RUN  v5.0.3 /home/user/squeal
+
+(node:14199) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:14200) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |isolated| test/cli/proof-not-kept.test.ts (1 test | 1 failed) 9570ms
+   ❯ a run file the gate does not keep names the gate's reason (row 023-18 D2) (1)
+     × squeal proof 9569ms
+ ❯ |isolated| test/cli/proof-kept-key.test.ts (1 test | 1 failed) 9731ms
+   ❯ squeal proof reads each run side at its stored key (row 023-18 D1) (1)
+     × says both sides are stored on the first call, and reads them on the second 9730ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |isolated| test/cli/proof-kept-key.test.ts > squeal proof reads each run side at its stored key (row 023-18 D1) > says both sides are stored on the first call, and reads them on the second
+AssertionError: expected { project: '', …(11) } to match object { verdict: 'proven', …(2) }
+(12 matching properties omitted from actual)
+
+- Expected
++ Received
+
+@@ -6,10 +6,10 @@
+      "stored": true,
+    },
+    "red": {
+      "end": "fail",
+      "from": "run",
+-     "notStored": null,
+-     "stored": true,
++     "notStored": "the gate did not keep it and gave no reason",
++     "stored": false,
+    },
+    "verdict": "proven",
+  }
+
+ ❯ test/cli/proof-kept-key.test.ts:42:28
+     40|     __w(`${process.env.WHY_DIR}/proof-kept-key-${Date.now()}.txt`, fir…
+     41|     expect(first.code, first.why).toBe(0);
+     42|     expect(first.files[0]).toMatchObject({
+       |                            ^
+     43|       verdict: "proven",
+     44|       red: { end: "fail", from: "run", stored: true, notStored: null },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |isolated| test/cli/proof-not-kept.test.ts > a run file the gate does not keep names the gate's reason (row 023-18 D2) > squeal proof
+AssertionError: expected 'the gate did not keep it and gave no …' to contain 'first seen during the run'
+
+Expected: "first seen during the run"
+Received: "the gate did not keep it and gave no reason"
+
+ ❯ test/cli/proof-not-kept.test.ts:52:43
+     50|     expect(first.code, first.why).toBe(0);
+     51|     expect(first.files[0]?.red).toMatchObject({ end: "fail", stored: f…
+     52|     expect(first.files[0]?.red.notStored).toContain("first seen during…
+       |                                           ^
+     53|     clean(f);
+     54|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed (2)
+   Start at  23:29:25
+   Duration  14.44s (tests 68%, transform 27%, import 5%)
+

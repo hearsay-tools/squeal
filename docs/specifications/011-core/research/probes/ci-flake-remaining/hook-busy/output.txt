@@ -1,0 +1,10 @@
+STATUS_BUSY_TIMEOUT_MS = 1000
+session-start | lock held 0 ms | 17 ms | stdout "SQUEAL · registered at revision 1\nRevision 1 (changed src/ma" | stderr ""
+session-start | lock held 3000 ms | 1004 ms | stdout "" | stderr "squeal session-start hook: Error: database is locked"
+session-start | lock held 0 ms | 5 ms | stdout "SQUEAL · registered at revision 1\nRevision 1 (changed src/ma" | stderr ""
+post-tool-batch | lock held 3000 ms | 1004 ms | stdout "" | stderr "squeal post-tool-batch hook: Error: database is locked"
+post-tool-batch | lock held 0 ms | 9 ms | stdout "SQUEAL · 1 check changed (1 test) at revision 2\nRevision 2 (" | stderr ""
+next post-tool-batch carries PASS -> FAIL: true
+session-start | lock held 3000 ms | 1004 ms | stdout "" | stderr "squeal session-start hook: Error: database is locked"
+post-tool-batch | lock held 0 ms | 6 ms | stdout "SQUEAL · registered at revision 2\nRevision 2 (changed src/ma" | stderr ""
+late session's first post-tool-batch registers it: true

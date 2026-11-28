@@ -1,0 +1,6 @@
+EVENT_DEADLINE_MS = 2000
+main thread held 0 ms | answer "blocked: toolCall" after 0 ms | workers started 1 (2 = the next call started a fresh one) | next call "blocked: ping"
+main thread held 1500 ms | answer "blocked: toolCall" after 1500 ms | workers started 1 (2 = the next call started a fresh one) | next call "blocked: ping"
+main thread held 1990 ms | answer "blocked: toolCall" after 1990 ms | workers started 1 (2 = the next call started a fresh one) | next call "blocked: ping"
+main thread held 2100 ms | answer "blocked: toolCall" after 2100 ms | workers started 1 (2 = the next call started a fresh one) | next call "blocked: ping"
+main thread held 3000 ms | answer "blocked: toolCall" after 3000 ms | workers started 1 (2 = the next call started a fresh one) | next call "blocked: ping"

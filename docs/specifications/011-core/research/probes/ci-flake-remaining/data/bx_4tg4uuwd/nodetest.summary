@@ -1,0 +1,4 @@
+1 exit=0 secs=27 load=6.23 silent=0
+2 exit=0 secs=27 load=9.22 silent=0
+3 exit=1 secs=9 load=10.04 silent=1
+4 exit=0 secs=23 load=11.51 silent=0

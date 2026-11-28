@@ -1,0 +1,12 @@
+110:     ✓ counts a Playwright-style expect error without the AssertionError name as an assertion 7006ms
+213: FAIL  |isolated| test/cli/proof-repeat.test.ts > squeal proof --repeat (row 023-11, D5.4) > reads not comparable (budget) with a rerun line when the budget leaves a run not started
+214:AssertionError: expected { project: '', …(11) } to match object { verdict: 'not comparable', …(2) }
+217:- Expected
+218:+ Received
+221:-   "reason": "budget",
+222:+   "reason": "its commit daemon at 11e9f28f0: the daemon did not answer before the deadline",
+225:-     "reason": "not run (budget)",
+226:+     "reason": "its commit daemon at 11e9f28f0: the daemon did not answer before the deadline",
+232: ❯ test/cli/proof-repeat.test.ts:84:29
+ Test Files  1 failed | 25 passed (26)
+      Tests  1 failed | 124 passed (125)
