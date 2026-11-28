@@ -23,9 +23,9 @@ cat /proc/loadavg
 getconf _NPROCESSORS_ONLN
 node --version
 git rev-parse HEAD
-sha256sum src/runners/ci-runtime/evidence.cjs /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.665/dist/ci/evidence.cjs
+sha256sum src/runners/ci-runtime/evidence.cjs ~/.codex/plugins/data/squeal-hearsay/versions/0.1.665/dist/ci/evidence.cjs
 node docs/specifications/018-ci-and-shared-results/research/probes/issue-311/probe.cjs "$PWD/src/runners/ci-runtime/evidence.cjs"
-node docs/specifications/018-ci-and-shared-results/research/probes/issue-311/probe.cjs /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.665/dist/ci/evidence.cjs
+node docs/specifications/018-ci-and-shared-results/research/probes/issue-311/probe.cjs ~/.codex/plugins/data/squeal-hearsay/versions/0.1.665/dist/ci/evidence.cjs
 ```
 
 Both probes exited 0 and reported `applicationWrites: 0`, `spyCalls: 1`. The intercepted path ended in `evidence/<pid>-0-<time>.ndjson`; the payload held `e.input.txt` with hash `3f9177e45e805cac9e76b5a2131ba3484367200b` and clock field `o`. Options were `{ encoding: 'utf8', mode: 438, flag: 'a' }`, matching the append-write shape reported in the issue. The issue's clock-only payload is a different flush path; this probe deliberately forces input evidence to avoid timing dependence.
