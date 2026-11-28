@@ -6168,7 +6168,10 @@ function readBlobs(meta, key) {
   return new Map(entries.filter((e) => typeof e[1] === "string"));
 }
 function readQuiet(meta, worktreeId) {
-  const raw = parse2(meta.get(quietKey(worktreeId)));
+  return readPaths(meta, quietKey(worktreeId));
+}
+function readPaths(meta, key) {
+  const raw = parse2(meta.get(key));
   return new Set(Array.isArray(raw) ? raw.filter((p) => typeof p === "string") : []);
 }
 function readCount(meta, key) {
@@ -6564,6 +6567,7 @@ var SLOT_WAITER_FRESH_MS = 3e4;
 
 // src/core/lint/pass/cpu-wait.ts
 var cpuWaitKey = (scope) => `lint-cpu-wait:${scope}`;
+var CAUSES = ["ceiling", "share", "queue"];
 function readRecord(meta, scope) {
   const raw = meta.get(cpuWaitKey(scope));
   if (raw === null) return null;
@@ -6572,7 +6576,8 @@ function readRecord(meta, scope) {
     const busy2 = r.busy;
     if (typeof r.since !== "number" || typeof r.at !== "number" || typeof r.limit !== "number" || busy2 !== null && typeof busy2 !== "number")
       return null;
-    return { since: r.since, at: r.at, busy: busy2, limit: r.limit };
+    const cause = CAUSES.find((c) => c === r.cause) ?? "ceiling";
+    return { since: r.since, at: r.at, busy: busy2, limit: r.limit, cause };
   } catch {
     return null;
   }
@@ -6580,7 +6585,7 @@ function readRecord(meta, scope) {
 function readCpuWait(meta, scope, now) {
   const r = readRecord(meta, scope);
   if (r === null || now - r.at > SLOT_WAITER_FRESH_MS) return null;
-  return { since: r.since, busy: r.busy, limit: r.limit };
+  return { since: r.since, busy: r.busy, limit: r.limit, cause: r.cause };
 }
 
 // src/core/lint/pass/moment.ts
@@ -13330,7 +13335,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.665";
+  if (true) return "0.1.666";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
