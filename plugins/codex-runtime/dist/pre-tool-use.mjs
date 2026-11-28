@@ -13330,7 +13330,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.665";
+  if (true) return "0.1.667";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -15655,7 +15655,7 @@ function livenessTitle(liveness, header, command) {
 
 // src/core/daemon/ensure.ts
 import { spawn } from "node:child_process";
-import { closeSync as closeSync2, existsSync as existsSync10, mkdirSync as mkdirSync9 } from "node:fs";
+import { closeSync as closeSync2, existsSync as existsSync10, lstatSync as lstatSync6, mkdirSync as mkdirSync9 } from "node:fs";
 
 // src/core/node-pin.ts
 import { execFileSync } from "node:child_process";
@@ -16816,7 +16816,7 @@ async function writeThenCommit(handOff, outputs, boundMs = HAND_OFF_BOUND_MS) {
 import { createHash as createHash9 } from "node:crypto";
 import {
   existsSync as existsSync13,
-  lstatSync as lstatSync6,
+  lstatSync as lstatSync7,
   readdirSync as readdirSync12,
   readFileSync as readFileSync21,
   renameSync as renameSync6,
@@ -16895,7 +16895,7 @@ function hash2(text2) {
   return createHash9("sha256").update(text2).digest("hex").slice(0, 32);
 }
 function readKept(file) {
-  const stat = lstatSync6(file, { throwIfNoEntry: false });
+  const stat = lstatSync7(file, { throwIfNoEntry: false });
   if (stat === void 0 || !stat.isFile() || stat.uid !== currentUid()) return null;
   const kept3 = JSON.parse(readFileSync21(file, "utf8"));
   if (!isRecord(kept3) || typeof kept3.root !== "string" || typeof kept3.commonDir !== "string") {

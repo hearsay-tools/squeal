@@ -13461,7 +13461,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.665";
+  if (true) return "0.1.667";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -15133,7 +15133,7 @@ import { randomUUID as randomUUID2 } from "node:crypto";
 
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
-import { closeSync as closeSync2, existsSync as existsSync11, mkdirSync as mkdirSync9 } from "node:fs";
+import { closeSync as closeSync2, existsSync as existsSync11, lstatSync as lstatSync6, mkdirSync as mkdirSync9 } from "node:fs";
 
 // src/core/node-pin.ts
 import { execFileSync } from "node:child_process";
