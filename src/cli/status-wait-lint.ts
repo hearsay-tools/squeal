@@ -22,6 +22,10 @@ export function namedLintLines(
   base: string | undefined,
 ): string[] {
   if (lint === undefined) return [];
+  // Review 0.1.666 B1: a lint store the wait could not read is told, never counted as linted.
+  if (lint.unavailable !== undefined) {
+    return [`Lint of the named files: unavailable: ${lint.unavailable}.`];
+  }
   const total = lint.files.length;
   const parts = [
     plural(total, "check"),
