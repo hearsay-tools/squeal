@@ -132,7 +132,7 @@ describe("the prune never blocks the thread on the registry lock (review 0.1.658
     expect(ids(u.env)).toEqual([]);
   });
 
-  it("ends at an abort while it waits for the lock, and keeps the record", async () => {
+  it("ends at an abort while it waits for the lock, releases nothing and keeps the record", async () => {
     const u = pruneUser();
     u.track({ id: "cmd:old", worktreeRoot: u.gone() });
     lockHolder(u.env, 60_000);
@@ -142,12 +142,14 @@ describe("the prune never blocks the thread on the registry lock (review 0.1.658
       providerOf: u.providerOf,
       signal: stop.signal,
     });
-    while (u.released.length === 0) await new Promise((resolve) => setTimeout(resolve, 5));
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Review 0.1.667 B2: the claim under the lock comes before the release.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(u.released).toEqual([]);
     const began = performance.now();
     stop.abort();
     expect(await pruning).toMatchObject({ outcomes: [], aborted: true });
     expect(performance.now() - began).toBeLessThan(500);
+    expect(u.released).toEqual([]);
     expect(ids(u.env)).toEqual(["cmd:old"]);
   });
 });

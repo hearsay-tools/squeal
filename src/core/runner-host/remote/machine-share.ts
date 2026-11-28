@@ -2,6 +2,7 @@ import type { RemoteSleepOutcome } from "../../types/daemon.js";
 import { RemoteRefusal } from "./connect.js";
 import { type DiskProbe, judgeDisk } from "./disk-check.js";
 import type { LaneSleep } from "./lane.js";
+import { claimBeforeUse } from "./machine-claim.js";
 import { forgetMachine, recordMachine, updateMachine } from "./machines-store.js";
 import { worktreePresence } from "./presence.js";
 import { type MachineRequest, type RemoteMachine, recordOf } from "./provider.js";
@@ -287,6 +288,26 @@ export function shareMachine(options: ShareOptions): MachineShare {
   };
 
   const reachOnce = async (): Promise<RemoteMachine> => {
+    if (machine === null || !awake) {
+      // Row 026-43 (review 0.1.667 B2): claimed before any reuse, so no prune deletes it meanwhile.
+      const gone = await claimBeforeUse({
+        key,
+        provider,
+        config: lane.providerConfig,
+        env: env ?? process.env,
+        at: now(),
+        signal: exiting.signal,
+        log: request.log,
+      }).catch((error: unknown) => {
+        throw exited() ? refused() : error;
+      });
+      if (gone !== null && machine?.id === gone) {
+        machine = null;
+        awake = false;
+        disarm();
+      }
+      if (released) throw refused();
+    }
     if (machine === null) {
       const acquired = await provider.acquire(asked, lane.providerConfig);
       // Acquired during the exit too: recorded, and `release` waits for this and releases it.

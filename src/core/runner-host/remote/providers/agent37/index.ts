@@ -108,10 +108,13 @@ export function agent37Ssh(
   };
 }
 
-/** The tracked instance of `request`'s worktree, when there is one. */
+/**
+ * The tracked instance of `request`'s worktree, when there is one. Row
+ * 026-43 (review 0.1.667 B2): never one a prune is deleting; a new one is created.
+ */
 function trackedState(request: MachineRequest, env: NodeJS.ProcessEnv): Agent37State | null {
   const record = readMachines(env).machines.find(
-    (m) => m.provider === AGENT37 && m.worktreeId === request.worktreeId,
+    (m) => m.provider === AGENT37 && m.worktreeId === request.worktreeId && m.status !== "deleting",
   );
   return record === undefined ? null : stateOf(record.state);
 }

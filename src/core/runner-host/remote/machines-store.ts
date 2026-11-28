@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
 import { isRecord } from "../../fs/json.js";
-import type { AbsolutePath } from "../../types/common.js";
+import type { AbsolutePath, EpochMs } from "../../types/common.js";
 import type { MachineRecord } from "./provider.js";
 import { LOCK_WAIT_MS, locked, tryLocked } from "./registry-lock.js";
 
@@ -67,13 +67,58 @@ export function recordMachine(record: MachineRecord, env: NodeJS.ProcessEnv = pr
   change(env, (machines) => [...machines.filter((m) => !same(m, record)), record]);
 }
 
-/** Changes the record of `provider` and `worktreeId`, when there is one. */
+/**
+ * Changes the record of `provider` and `worktreeId`, when there is one.
+ * Row 026-43 (review 0.1.667 B2): never one a prune claimed (`deleting`).
+ */
 export function updateMachine(
   key: Pick<MachineRecord, "provider" | "worktreeId">,
   patch: Partial<Pick<MachineRecord, "status" | "lastUsedAt" | "detachedAt">>,
   env: NodeJS.ProcessEnv = process.env,
 ): void {
-  change(env, (machines) => machines.map((m) => (same(m, key) ? { ...m, ...patch } : m)));
+  change(env, (machines) =>
+    machines.map((m) => (same(m, key) && m.status !== "deleting" ? { ...m, ...patch } : m)),
+  );
+}
+
+/**
+ * Row 026-43 (review 0.1.667 B2): a daemon's claim of `key`'s record,
+ * under the registry lock, before it reuses or wakes its machine: the
+ * record is marked `awake` and used `at`, so a prune's later claim, which
+ * needs its status and timestamps unchanged, fails. A record a prune
+ * claimed first is left `deleting`. Resolves the record as found then
+ * (`deleting`) or as claimed; `undefined` when there is none. Rejects as
+ * `changeMachinesSoon` does.
+ */
+export async function claimForUse(
+  key: Pick<MachineRecord, "provider" | "worktreeId">,
+  at: EpochMs,
+  env: NodeJS.ProcessEnv,
+  signal?: AbortSignal,
+): Promise<MachineRecord | undefined> {
+  let found: MachineRecord | undefined;
+  await changeMachinesSoon(
+    env,
+    (machines) =>
+      machines.map((m) => {
+        if (!same(m, key)) return m;
+        found = m.status === "deleting" ? m : { ...m, status: "awake", lastUsedAt: at };
+        return found;
+      }),
+    signal,
+  );
+  return found;
+}
+
+/** Row 026-43 (B2): the edit that drops `claim`, a `deleting` record, only while it stands as claimed. */
+export function forgettingClaim(
+  claim: MachineRecord,
+): (machines: readonly MachineRecord[]) => readonly MachineRecord[] {
+  return (machines) =>
+    machines.filter(
+      (m) =>
+        !same(m, claim) || m.id !== claim.id || m.scope !== claim.scope || m.status !== "deleting",
+    );
 }
 
 /**

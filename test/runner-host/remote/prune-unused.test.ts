@@ -7,7 +7,7 @@ import {
 import { machineScope } from "../../../src/core/runner-host/remote/presence.js";
 import type { MachineRecord } from "../../../src/core/runner-host/remote/provider.js";
 import { pruneRemovedWorktrees } from "../../../src/core/runner-host/remote/prune.js";
-import { durationText } from "../../../src/core/runner-host/remote/prune-unused.js";
+import { durationText, type Liveness } from "../../../src/core/runner-host/remote/prune-unused.js";
 import type { AbsolutePath } from "../../../src/core/types/common.js";
 import { pruneUser } from "./prune-fakes.js";
 
@@ -26,7 +26,7 @@ const kinds = (result: Awaited<ReturnType<typeof pruneRemovedWorktrees>>) =>
   result.outcomes.map((o) => [o.kind, o.record.id]);
 
 /** `daemonLive` that answers `live` and records each worktree it was asked about. */
-function liveness(live: (root: AbsolutePath) => boolean = () => false) {
+function liveness(live: (root: AbsolutePath) => Liveness = () => "absent") {
   const asked: string[] = [];
   return {
     asked,
@@ -92,7 +92,7 @@ describe("a detached machine no daemon used for deleteUnusedHours (row 026-43)",
   it("keeps a machine whose worktree has a live daemon", async () => {
     const u = pruneUser();
     u.track({ id: "cmd:old", detachedAt: ago(25), scope: machineScope() });
-    const live = liveness(() => true);
+    const live = liveness(() => "alive");
     const result = await pruneRemovedWorktrees({
       env: u.env,
       providerOf: u.providerOf,
@@ -113,7 +113,7 @@ describe("a machine marked in use whose daemon crashed (row 026-43)", () => {
     const result = await pruneRemovedWorktrees({
       env: u.env,
       providerOf: u.providerOf,
-      daemonLive: () => false,
+      daemonLive: () => "absent",
     });
     expect(result.outcomes).toMatchObject([
       { kind: "released", record: { id: "cmd:crashed" }, cause: { how: "crashed" } },
@@ -128,7 +128,7 @@ describe("a machine marked in use whose daemon crashed (row 026-43)", () => {
     const result = await pruneRemovedWorktrees({
       env: u.env,
       providerOf: u.providerOf,
-      daemonLive: () => true,
+      daemonLive: () => "alive",
     });
     expect(result.outcomes).toEqual([]);
     expect(ids(u.env)).toEqual(["cmd:busy"]);
@@ -215,7 +215,7 @@ describe("a machine used again between the prune's read and its release (row 026
     const pruning = pruneRemovedWorktrees({
       env: u.env,
       providerOf: u.providerOf,
-      daemonLive: () => false,
+      daemonLive: () => "absent",
     });
     await pending(u);
     const old = readMachines(u.env).machines.find((m) => m.id === "cmd:old") as MachineRecord;
@@ -235,7 +235,7 @@ describe("a machine used again between the prune's read and its release (row 026
     const pruning = pruneRemovedWorktrees({
       env: u.env,
       providerOf: u.providerOf,
-      daemonLive: () => false,
+      daemonLive: () => "absent",
     });
     await pending(u);
     const old = readMachines(u.env).machines.find((m) => m.id === "cmd:old") as MachineRecord;
@@ -256,7 +256,7 @@ describe("a machine used again between the prune's read and its release (row 026
     const pruning = pruneRemovedWorktrees({
       env: u.env,
       providerOf: u.providerOf,
-      daemonLive: () => started,
+      daemonLive: () => (started ? "alive" : "absent"),
     });
     await pending(u);
     started = true;

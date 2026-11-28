@@ -108,7 +108,7 @@ describe("an Agent37 machine no daemon used for a day (row 026-43)", () => {
       env: s.env,
       providerOf,
       scope: machineScope(),
-      daemonLive: () => false,
+      daemonLive: () => "absent",
     });
     expect(result.outcomes).toMatchObject([{ kind: "released", cause: { kind: "unused" } }]);
     expect(s.api.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
@@ -122,6 +122,20 @@ describe("an Agent37 machine no daemon used for a day (row 026-43)", () => {
     expect(s.api.calls[0]).toMatchObject({ method: "POST", path: "/v1/instances" });
     expect(instanceOf(readMachines(s.env).machines[0])).not.toBe(first);
     expect(again.id).not.toBe(record?.id);
+  });
+
+  it("claimed by a prune (deleting), is never reused by the next daemon's acquire (review 0.1.667 B2)", async () => {
+    const s = await setup();
+    await s.daemonAcquires();
+    const [record] = readMachines(s.env).machines;
+    const first = instanceOf(record) as string;
+    recordMachine({ ...(record as MachineRecord), status: "deleting" }, s.env);
+    s.api.calls.length = 0;
+    await s.daemonAcquires();
+    // No inspect or start of the claimed instance: a new one is created.
+    expect(s.api.calls[0]).toMatchObject({ method: "POST", path: "/v1/instances" });
+    expect(s.api.calls.some((c) => c.path.includes(first))).toBe(false);
+    expect(instanceOf(readMachines(s.env).machines[0])).not.toBe(first);
   });
 
   it("left tracked after its delete, answers 404 and the next daemon creates a new one", async () => {

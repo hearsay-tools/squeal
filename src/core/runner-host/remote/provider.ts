@@ -92,8 +92,13 @@ export interface RemoteMachine {
   syncGit?(ssh: SshTarget | null, signal?: AbortSignal): Promise<boolean>;
 }
 
-/** Where a tracked machine stands, as `squeal remote list` shows it (D12). */
-export type MachineStatus = "awake" | "sleeping" | "detached";
+/**
+ * Where a tracked machine stands, as `squeal remote list` shows it (D12).
+ * Row 026-43 (review 0.1.667 B2): `deleting`, a prune claimed it to
+ * release it; no daemon reuses it, and the next prune or the worktree's
+ * next daemon releases it again when that prune ended first.
+ */
+export type MachineStatus = "awake" | "sleeping" | "detached" | "deleting";
 
 /**
  * One machine in `$XDG_STATE_HOME/squeal/remote-machines.json`: what a

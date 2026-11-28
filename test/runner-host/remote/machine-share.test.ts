@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it, onTestFinished } from "vitest";
+import { worktreeIdFor } from "../../../src/core/fs/git-layout.js";
 import {
   type RemoteHostOptions,
   RemoteRefusal,
@@ -25,7 +26,10 @@ import {
   MachineEnding,
   shareMachine,
 } from "../../../src/core/runner-host/remote/machine-share.js";
-import { readMachines } from "../../../src/core/runner-host/remote/machines-store.js";
+import {
+  readMachines,
+  recordMachine,
+} from "../../../src/core/runner-host/remote/machines-store.js";
 import type { MachineRequest } from "../../../src/core/runner-host/remote/provider.js";
 import {
   type RemoteLane,
@@ -379,6 +383,34 @@ describe("one machine for every runner (row 026-11)", () => {
     chmodSync(parent, 0o700);
     expect(m.reasons()).toEqual(["daemon-exit"]);
     expect(readMachines(m.env).machines.map((r) => r.status)).toEqual(["detached"]);
+  });
+
+  it("releases a machine a prune is deleting and acquires another, never reusing it (row 026-43)", async () => {
+    const m = machine();
+    // Review 0.1.667 B2: a prune claimed the worktree's machine and ended before its release.
+    recordMachine(
+      {
+        provider: "command",
+        id: "cmd:doomed",
+        worktreeId: worktreeIdFor(m.root),
+        worktreeRoot: m.root,
+        repositoryKey: m.root,
+        destination: "dev@old-box",
+        sshArgs: [],
+        places: { node: "node", cache: ".squeal-remote" },
+        capabilities: { hasGitRepository: false, sleepOnIdle: true, ephemeralHostKey: false },
+        status: "deleting",
+        createdAt: 1,
+        lastUsedAt: 2,
+      },
+      m.env,
+    );
+    await connectAll(m);
+    expect(m.calls()).toEqual(["release", "acquire"]);
+    expect(m.reasons()).toEqual(["unused"]);
+    expect(readMachines(m.env).machines.map((r) => [r.id, r.status])).toEqual([
+      ["cmd:lan", "awake"],
+    ]);
   });
 });
 

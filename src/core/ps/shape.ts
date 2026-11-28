@@ -163,7 +163,7 @@ export interface PsRunnerHost {
   readonly machine?: {
     readonly provider: string;
     readonly id: string;
-    readonly state: "awake" | "sleeping" | "detached";
+    readonly state: "awake" | "sleeping" | "detached" | "deleting";
   };
   readonly startedAt: EpochMs | null;
   readonly cpuPct: number | null;

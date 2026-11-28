@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { closeSync, existsSync, mkdirSync } from "node:fs";
+import { closeSync, existsSync, lstatSync, mkdirSync } from "node:fs";
+import { isMissing } from "../fs/errors.js";
 import { resolveCommonDir, worktreeIdFor } from "../fs/git-layout.js";
 import { pathFirst, pinnedNode } from "../node-pin.js";
 import { daemonLiveness } from "../presence/heartbeat.js";
@@ -162,6 +163,43 @@ export function recordedDaemon(root: AbsolutePath, busyTimeoutMs = 100): DaemonR
  */
 export function liveDaemonRecorded(root: AbsolutePath, now: number = Date.now()): boolean {
   return daemonLiveness(recordedDaemon(root), now).state === "alive";
+}
+
+/**
+ * Row 026-43 (review 0.1.667 B1): whether a daemon of the worktree at
+ * `root` is live, for a caller that destroys something when none is:
+ * `absent` only when that is confirmed (no repository, no store file, no
+ * daemon row, or a stale heartbeat); `unknown` when the store or a path to
+ * it cannot be read, is corrupt, newer or busy. `liveDaemonRecorded` folds
+ * `unknown` into "no daemon" for its callers.
+ */
+export type RecordedLiveness = "alive" | "absent" | "unknown";
+
+export function recordedDaemonLiveness(
+  root: AbsolutePath,
+  now: number = Date.now(),
+  busyTimeoutMs = 100,
+): RecordedLiveness {
+  try {
+    const commonDir = resolveCommonDir(root);
+    if (commonDir === null) return "absent";
+    try {
+      // Not `existsSync`, which says "missing" for a file it may not read.
+      lstatSync(storePaths(commonDir).database);
+    } catch (error) {
+      return isMissing(error) ? "absent" : "unknown";
+    }
+    const store = openStore(commonDir, { create: false, busyTimeoutMs });
+    if (isStoreOpenFailure(store)) return store.reason === "missing" ? "absent" : "unknown";
+    try {
+      const daemon = store.worktrees.get(worktreeIdFor(root))?.daemon ?? null;
+      return daemonLiveness(daemon, now).state === "alive" ? "alive" : "absent";
+    } finally {
+      store.close();
+    }
+  } catch {
+    return "unknown";
+  }
 }
 
 /** What `ensureDaemonProcess` did, and the process it spawned (row 011-214). */
