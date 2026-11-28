@@ -83,7 +83,11 @@ export function readNamedLint(
     if ("unreadable" in access) return unavailable(access.unreadable, false);
     const bytes = (path: RelativePath) => bytesOf(root, path);
     const at = { revision, bytes, files: named.files };
-    const lint = namedLintOf(access.store, worktreeIdFor(root), (p) => named.has(p), now, at);
+    const { store } = access;
+    // Review 0.1.666-r2 B1-R: the states, the cursor and the facts beside them from one snapshot.
+    const lint = store.read(() =>
+      namedLintOf(store, worktreeIdFor(root), (p) => named.has(p), now, at),
+    );
     return { lint, retry: false };
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
