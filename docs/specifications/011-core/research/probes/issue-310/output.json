@@ -1,0 +1,70 @@
+{
+  "node": "v26.13.0",
+  "cpus": 16,
+  "load": [
+    1.54,
+    2.13,
+    2.63
+  ],
+  "results": [
+    {
+      "name": "mtime-only touch",
+      "revision": null,
+      "changes": [],
+      "hashUnchanged": true,
+      "fingerprintUnchanged": true,
+      "trustedGraph": true,
+      "lintRefresh": "none"
+    },
+    {
+      "name": "identical-byte rewrite",
+      "revision": null,
+      "changes": [],
+      "hashUnchanged": true,
+      "fingerprintUnchanged": true,
+      "trustedGraph": true,
+      "lintRefresh": "none"
+    },
+    {
+      "name": "identical-byte atomic replacement",
+      "revision": null,
+      "changes": [],
+      "hashUnchanged": true,
+      "fingerprintUnchanged": true,
+      "trustedGraph": true,
+      "lintRefresh": "none"
+    },
+    {
+      "name": "content-change control",
+      "revision": 1,
+      "changes": [
+        {
+          "path": "node_modules/.pnpm/lock.yaml",
+          "oldHash": "ee40cf3f2422e3db848f64037dbd0caff153fe52",
+          "newHash": "94b966e16e68ee50821bde59e279462f70aba8fa",
+          "ignored": true
+        }
+      ],
+      "hashUnchanged": false,
+      "fingerprintUnchanged": false,
+      "trustedGraph": true,
+      "lintRefresh": "thread"
+    },
+    {
+      "name": "unchanged file with empty stat cache",
+      "revision": 2,
+      "changes": [
+        {
+          "path": "node_modules/.pnpm/lock.yaml",
+          "oldHash": null,
+          "newHash": "94b966e16e68ee50821bde59e279462f70aba8fa",
+          "ignored": true
+        }
+      ],
+      "hashUnchanged": false,
+      "fingerprintUnchanged": false,
+      "trustedGraph": true,
+      "lintRefresh": "thread"
+    }
+  ]
+}
