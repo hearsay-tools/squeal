@@ -1,0 +1,158 @@
+{
+  "version": "0.1.665",
+  "commit": "018267eeae8a99e1cd7fb90a5cdb33e737eecf04",
+  "node": "v26.13.0",
+  "load": [
+    3.05,
+    2.34,
+    2.79
+  ],
+  "cpus": 16,
+  "results": [
+    {
+      "mode": "transform-error-omits-target",
+      "beforeDelivery": {
+        "requests": 2,
+        "sends": [
+          [
+            "src/codex-app-server-runner.ts"
+          ]
+        ],
+        "firstErrors": 1,
+        "retryErrors": 1,
+        "firstEnd": "completed",
+        "retryEnd": "completed",
+        "firstCompleted": 1,
+        "retryCompleted": 1
+      },
+      "recoveryErrors": 0,
+      "localRuns": 0,
+      "sends": [
+        [
+          "src/codex-app-server-runner.ts"
+        ],
+        [
+          "src/codex-questions.ts"
+        ]
+      ],
+      "evidence": [
+        {
+          "request": 1,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/codex-app-server-runner.ts"
+          ],
+          "missingOnRemote": true,
+          "refused": []
+        },
+        {
+          "request": 2,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/codex-app-server-runner.ts"
+          ],
+          "missingOnRemote": true,
+          "refused": []
+        },
+        {
+          "request": 3,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/codex-app-server-runner.ts",
+            "src/codex-questions.ts"
+          ],
+          "missingOnRemote": false,
+          "refused": []
+        }
+      ],
+      "logs": [
+        "remote synthetic: run proven over 2 paths",
+        "remote synthetic: run proven over 2 paths",
+        "remote synthetic: run proven over 3 paths"
+      ]
+    },
+    {
+      "mode": "candidate-in-proof-control",
+      "beforeDelivery": {
+        "requests": 3,
+        "sends": [
+          [
+            "src/codex-app-server-runner.ts"
+          ],
+          [
+            "src/codex-questions.ts"
+          ]
+        ],
+        "firstErrors": 0,
+        "retryErrors": 0,
+        "firstEnd": "completed",
+        "retryEnd": "completed",
+        "firstCompleted": 1,
+        "retryCompleted": 1
+      },
+      "recoveryErrors": 0,
+      "localRuns": 0,
+      "sends": [
+        [
+          "src/codex-app-server-runner.ts"
+        ],
+        [
+          "src/codex-questions.ts"
+        ],
+        [
+          "src/codex-questions.ts"
+        ]
+      ],
+      "evidence": [
+        {
+          "request": 1,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/codex-questions.ts",
+            "src/codex-app-server-runner.ts"
+          ],
+          "missingOnRemote": true,
+          "refused": [
+            "src/codex-questions.ts"
+          ]
+        },
+        {
+          "request": 2,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/codex-questions.ts",
+            "src/codex-app-server-runner.ts"
+          ],
+          "missingOnRemote": false,
+          "refused": []
+        },
+        {
+          "request": 3,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/codex-app-server-runner.ts",
+            "src/codex-questions.ts"
+          ],
+          "missingOnRemote": false,
+          "refused": []
+        },
+        {
+          "request": 4,
+          "expectedPaths": [
+            "test/view.test.ts",
+            "src/codex-questions.ts",
+            "src/codex-app-server-runner.ts"
+          ],
+          "missingOnRemote": false,
+          "refused": []
+        }
+      ],
+      "logs": [
+        "remote synthetic: tree differs at src/codex-questions.ts; sending again",
+        "remote synthetic: run proven over 3 paths",
+        "remote synthetic: run proven over 3 paths",
+        "remote synthetic: run proven over 3 paths"
+      ]
+    }
+  ]
+}
