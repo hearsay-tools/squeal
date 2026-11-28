@@ -268,10 +268,12 @@ export interface LintStopEvidence {
  * limit. `backlog`: it waits in a first or config keying's backlog, under
  * the background lease. `held`: a lint group holds it for a commit, the
  * agent's pause or `squeal run <group>`. `stale`: a whole-program file that
- * lints again once the agent is idle (D5). A named wait waits for `linting`
- * and `backlog` checks only: nothing lints the others during the wait.
+ * lints again once the agent is idle (D5). `keying` (review 0.1.666 B1):
+ * its tool's pass has not keyed the wait's revision, or its saved result
+ * is of other bytes than the file's now. A named wait waits for `linting`,
+ * `backlog` and `keying` checks only: nothing lints the others during it.
  */
-export type NamedLintWait = "linting" | "backlog" | "held" | "stale";
+export type NamedLintWait = "linting" | "backlog" | "held" | "stale" | "keying";
 
 /** Row 017-37: one named path's check of one tool, as the lint store has it. */
 export interface NamedLintFile {
@@ -302,4 +304,9 @@ export interface NamedLint {
   readonly unknown: number;
   /** Each named path's checks, by path then tool. */
   readonly files: readonly NamedLintFile[];
+  /**
+   * Review 0.1.666 B1: why the lint store could not be read, as busy,
+   * damaged or not made yet; the counts are then 0 and `files` empty.
+   */
+  readonly unavailable?: string;
 }

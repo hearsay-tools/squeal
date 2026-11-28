@@ -164,7 +164,7 @@ export function namedPoll(
       // Row 011-146 (C15): with `--check`, the focused answers decide too.
       const tested: Decided | null = focusOutcome(named, focus, reply);
       // Row 017-37: a decided read waits on while the pass lints a named path, until the deadline.
-      const readLint = () => lintOf(root, commonDir);
+      const readLint = () => lintOf(root, commonDir, store);
       const { decided, lint } = lintDecided(tested, final, daemon.state === "alive", readLint);
       const read: StatusRecord = {
         store: "read",
