@@ -1,0 +1,28 @@
+2026-11-28T02:43:18.160Z [486570] squeal daemon: serving /home/user/results/cells/wt-3@0.1.665-r2/work/wt2 on /home/user/results/cells/wt-3@0.1.665-r2/work/run/squeal-ca63f8457ca0e725.sock
+2026-11-28T02:44:12.698Z [486570] squeal daemon: code store: last minute: 46 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:44:22.813Z [486570] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 244 to 170 MiB in a 62 ms pause
+2026-11-28T02:44:36.945Z [486570] squeal daemon: coverage: test/m389.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/147237189fa9994e/coverage-d88Hps/.tmp/coverage-dca65e90-c2dc-4dd3-9124-f475859094a5.json'
+2026-11-28T02:44:36.946Z [486570] squeal daemon: coverage: 1 completed test file got no record since this daemon started: 1 map-error (its payload did not map); the last: test/m389.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1000/tmp/147237189fa9994e/coverage-d88Hps/.tmp/coverage-dca65e90-c2dc-4dd3-9124-f475859094a5.json'
+2026-11-28T02:45:12.655Z [486570] squeal daemon: hook writes: 11 taken, queue wait p95 4 ms max 4 ms
+2026-11-28T02:45:12.699Z [486570] squeal daemon: code store: last minute: 38 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:45:43.744Z [486570] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 0 of 3 test slots); the daemon asks again every 2 s
+2026-11-28T02:45:44.605Z [486570] squeal daemon: the pool granted the vitest lane's tier after 1 s of waiting for CPU
+2026-11-28T02:46:12.655Z [486570] squeal daemon: hook writes: 13 taken, queue wait p95 2 ms max 2 ms
+2026-11-28T02:46:12.703Z [486570] squeal daemon: code store: last minute: 54 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:47:12.656Z [486570] squeal daemon: hook writes: 15 taken, queue wait p95 4 ms max 4 ms
+2026-11-28T02:47:12.704Z [486570] squeal daemon: code store: last minute: 80 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:47:44.429Z [486570] squeal daemon: long write: store.sqlite write lock held 318 ms by reconcileBatch < process.processTicksAndRejections < #pass; 8005 rows written
+2026-11-28T02:47:45.832Z [486570] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (3 of 4 cores in use; Squeal's daemons hold 3 of 3 test slots); the daemon asks again every 2 s
+2026-11-28T02:47:47.830Z [486570] squeal daemon: the background ceiling refused a backlog tier: 3.1 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-28T02:47:55.858Z [486570] squeal daemon: the background ceiling let a backlog tier start after 8 s and 4 refused looks
+2026-11-28T02:47:55.859Z [486570] squeal daemon: the pool granted the vitest lane's tier after 10 s of waiting for CPU
+2026-11-28T02:48:12.656Z [486570] squeal daemon: hook writes: 9 taken, queue wait p95 2 ms max 2 ms
+2026-11-28T02:48:12.703Z [486570] squeal daemon: code store: last minute: 32 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:48:58.612Z [486570] squeal daemon: long write: store.sqlite write lock held 419 ms by #write < #record; 4603 rows written
+2026-11-28T02:49:12.703Z [486570] squeal daemon: code store: last minute: 15 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:50:02.261Z [486570] squeal daemon: long write: store.sqlite write lock held 490 ms by #write < #record; 4603 rows written
+2026-11-28T02:50:12.704Z [486570] squeal daemon: code store: last minute: 18 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:50:33.612Z [486570] squeal daemon: daemon stopped: squeal stop
+2026-11-28T02:50:33.617Z [486570] squeal daemon: code store: last minute: 11 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:50:33.762Z [486570] squeal daemon: hook writes: 2 taken, queue wait p95 39 ms max 39 ms
+2026-11-28T02:50:33.766Z [486570] squeal daemon: daemon stopped: squeal stop

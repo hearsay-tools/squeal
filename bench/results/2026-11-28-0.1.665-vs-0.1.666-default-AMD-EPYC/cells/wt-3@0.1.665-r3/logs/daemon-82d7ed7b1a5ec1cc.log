@@ -1,0 +1,27 @@
+2026-11-28T02:52:01.036Z [511348] squeal daemon: serving /home/user/results/cells/wt-3@0.1.665-r3/work/wt2 on /home/user/results/cells/wt-3@0.1.665-r3/work/run/squeal-82d7ed7b1a5ec1cc.sock
+2026-11-28T02:52:55.162Z [511348] squeal daemon: code store: last minute: 46 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:53:05.215Z [511348] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 234 to 159 MiB in a 55 ms pause
+2026-11-28T02:53:55.117Z [511348] squeal daemon: hook writes: 9 taken, queue wait p95 2 ms max 2 ms
+2026-11-28T02:53:55.162Z [511348] squeal daemon: code store: last minute: 37 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:54:55.119Z [511348] squeal daemon: hook writes: 15 taken, queue wait p95 4 ms max 4 ms
+2026-11-28T02:54:55.163Z [511348] squeal daemon: code store: last minute: 56 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:55:24.041Z [511348] squeal daemon: busy, heap in use 52 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 210 to 161 MiB in a 53 ms pause; 28 MiB of heap in use after it
+2026-11-28T02:55:55.124Z [511348] squeal daemon: hook writes: 15 taken, queue wait p95 9 ms max 9 ms
+2026-11-28T02:55:55.163Z [511348] squeal daemon: code store: last minute: 80 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:56:30.545Z [511348] squeal daemon: long write: store.sqlite write lock held 291 ms by reconcileBatch < #pass < withBusySlice; 8005 rows written
+2026-11-28T02:56:31.857Z [511348] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (3 of 4 cores in use; Squeal's daemons hold 3 of 3 test slots); the daemon asks again every 2 s
+2026-11-28T02:56:35.853Z [511348] squeal daemon: the background ceiling refused a backlog tier: 3.3 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-28T02:56:41.927Z [511348] squeal daemon: the background ceiling let a backlog tier start after 6 s and 3 refused looks
+2026-11-28T02:56:41.928Z [511348] squeal daemon: the pool granted the vitest lane's tier after 10 s of waiting for CPU
+2026-11-28T02:56:55.130Z [511348] squeal daemon: hook writes: 9 taken, queue wait p95 2 ms max 2 ms
+2026-11-28T02:56:55.163Z [511348] squeal daemon: code store: last minute: 35 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:57:43.784Z [511348] squeal daemon: long write: store.sqlite write lock held 390 ms by #write < #record; 4603 rows written
+2026-11-28T02:57:44.376Z [511348] squeal daemon: the store was busy for 0.3 s (another connection held its write lock); ran once it was free: the next tier
+2026-11-28T02:57:55.163Z [511348] squeal daemon: code store: last minute: 21 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:58:45.580Z [511348] squeal daemon: the store was busy for 0.1 s (another connection held its write lock); ran once it was free: the heartbeat
+2026-11-28T02:58:46.115Z [511348] squeal daemon: long write: store.sqlite write lock held 448 ms by #write < #record; 4603 rows written
+2026-11-28T02:58:55.164Z [511348] squeal daemon: code store: last minute: 18 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:59:17.342Z [511348] squeal daemon: daemon stopped: squeal stop
+2026-11-28T02:59:17.347Z [511348] squeal daemon: code store: last minute: 9 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:59:17.507Z [511348] squeal daemon: hook writes: 2 taken, queue wait p95 56 ms max 56 ms
+2026-11-28T02:59:17.509Z [511348] squeal daemon: daemon stopped: squeal stop

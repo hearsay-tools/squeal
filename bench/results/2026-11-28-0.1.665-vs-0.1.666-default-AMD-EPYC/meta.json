@@ -1,0 +1,257 @@
+{
+  "startedAt": "2026-11-27T23:59:14.987Z",
+  "squealVersion": "0.1.665 vs 0.1.666",
+  "plugins": [
+    {
+      "version": "0.1.665",
+      "label": "0.1.665"
+    },
+    {
+      "version": "0.1.666",
+      "label": "0.1.666"
+    }
+  ],
+  "repeat": 3,
+  "node": "v24.22.1",
+  "cpuModel": "AMD EPYC",
+  "vcpus": 4,
+  "memGiB": 7.8,
+  "freeMemGiB": 7,
+  "sha256MiBPerS": [
+    1365.3333333333333,
+    1372,
+    1361.3333333333333
+  ],
+  "loadavgAtStart": "0.15 0.07 0.08 1/382 6666",
+  "cells": [
+    {
+      "name": "ref@0.1.665-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.665",
+      "rep": 1
+    },
+    {
+      "name": "ref@0.1.666-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.666",
+      "rep": 1
+    },
+    {
+      "name": "ref@0.1.666-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.666",
+      "rep": 2
+    },
+    {
+      "name": "ref@0.1.665-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.665",
+      "rep": 2
+    },
+    {
+      "name": "ref@0.1.665-r3",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.665",
+      "rep": 3
+    },
+    {
+      "name": "ref@0.1.666-r3",
+      "files": 500,
+      "worktrees": 1,
+      "load": 0,
+      "base": "ref",
+      "plugin": "0.1.666",
+      "rep": 3
+    },
+    {
+      "name": "size-l@0.1.666-r1",
+      "files": 2000,
+      "worktrees": 1,
+      "load": 0,
+      "base": "size-l",
+      "plugin": "0.1.666",
+      "rep": 1
+    },
+    {
+      "name": "size-l@0.1.665-r1",
+      "files": 2000,
+      "worktrees": 1,
+      "load": 0,
+      "base": "size-l",
+      "plugin": "0.1.665",
+      "rep": 1
+    },
+    {
+      "name": "size-l@0.1.665-r2",
+      "files": 2000,
+      "worktrees": 1,
+      "load": 0,
+      "base": "size-l",
+      "plugin": "0.1.665",
+      "rep": 2
+    },
+    {
+      "name": "size-l@0.1.666-r2",
+      "files": 2000,
+      "worktrees": 1,
+      "load": 0,
+      "base": "size-l",
+      "plugin": "0.1.666",
+      "rep": 2
+    },
+    {
+      "name": "size-l@0.1.666-r3",
+      "files": 2000,
+      "worktrees": 1,
+      "load": 0,
+      "base": "size-l",
+      "plugin": "0.1.666",
+      "rep": 3
+    },
+    {
+      "name": "size-l@0.1.665-r3",
+      "files": 2000,
+      "worktrees": 1,
+      "load": 0,
+      "base": "size-l",
+      "plugin": "0.1.665",
+      "rep": 3
+    },
+    {
+      "name": "wt-3@0.1.665-r1",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.665",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.666-r1",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.666",
+      "rep": 1
+    },
+    {
+      "name": "wt-3@0.1.666-r2",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.666",
+      "rep": 2
+    },
+    {
+      "name": "wt-3@0.1.665-r2",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.665",
+      "rep": 2
+    },
+    {
+      "name": "wt-3@0.1.665-r3",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.665",
+      "rep": 3
+    },
+    {
+      "name": "wt-3@0.1.666-r3",
+      "files": 500,
+      "worktrees": 3,
+      "load": 0,
+      "base": "wt-3",
+      "plugin": "0.1.666",
+      "rep": 3
+    },
+    {
+      "name": "load-50@0.1.666-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 50,
+      "base": "load-50",
+      "plugin": "0.1.666",
+      "rep": 1
+    },
+    {
+      "name": "load-50@0.1.665-r1",
+      "files": 500,
+      "worktrees": 1,
+      "load": 50,
+      "base": "load-50",
+      "plugin": "0.1.665",
+      "rep": 1
+    },
+    {
+      "name": "load-50@0.1.665-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 50,
+      "base": "load-50",
+      "plugin": "0.1.665",
+      "rep": 2
+    },
+    {
+      "name": "load-50@0.1.666-r2",
+      "files": 500,
+      "worktrees": 1,
+      "load": 50,
+      "base": "load-50",
+      "plugin": "0.1.666",
+      "rep": 2
+    },
+    {
+      "name": "load-50@0.1.666-r3",
+      "files": 500,
+      "worktrees": 1,
+      "load": 50,
+      "base": "load-50",
+      "plugin": "0.1.666",
+      "rep": 3
+    },
+    {
+      "name": "load-50@0.1.665-r3",
+      "files": 500,
+      "worktrees": 1,
+      "load": 50,
+      "base": "load-50",
+      "plugin": "0.1.665",
+      "rep": 3
+    }
+  ],
+  "deps": {
+    "p500": {
+      "vitest": "5.0.3",
+      "vite": "8.4.0",
+      "@vitest/coverage-v8": "5.0.3"
+    },
+    "p2000": {
+      "vitest": "5.0.3",
+      "vite": "8.4.0",
+      "@vitest/coverage-v8": "5.0.3"
+    }
+  },
+  "endedAt": "2026-11-28T04:03:19.511Z"
+}

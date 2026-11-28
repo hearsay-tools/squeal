@@ -1,0 +1,21 @@
+2026-11-28T03:19:44.143Z [577038] squeal daemon: serving /home/user/results/cells/load-50@0.1.665-r1/work/wt0 on /home/user/results/cells/load-50@0.1.665-r1/work/run/squeal-14c28bc9c93208ab.sock
+2026-11-28T03:19:44.413Z [577038] squeal daemon: full integrity check: ok
+2026-11-28T03:20:38.152Z [577038] squeal daemon: code store: last minute: 79 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T03:21:38.153Z [577038] squeal daemon: code store: last minute: 42 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T03:22:18.223Z [577038] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 249 to 205 MiB in a 75 ms pause
+2026-11-28T03:22:38.106Z [577038] squeal daemon: hook writes: 4 taken, queue wait p95 3 ms max 3 ms
+2026-11-28T03:22:38.154Z [577038] squeal daemon: code store: last minute: 8 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T03:23:38.122Z [577038] squeal daemon: hook writes: 12 taken, queue wait p95 12 ms max 12 ms
+2026-11-28T03:23:38.154Z [577038] squeal daemon: code store: last minute: 101 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T03:24:38.122Z [577038] squeal daemon: hook writes: 16 taken, queue wait p95 6 ms max 6 ms
+2026-11-28T03:24:38.154Z [577038] squeal daemon: code store: last minute: 86 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T03:25:38.140Z [577038] squeal daemon: hook writes: 17 taken, queue wait p95 198 ms max 198 ms
+2026-11-28T03:25:38.165Z [577038] squeal daemon: code store: last minute: 67 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T03:26:38.167Z [577038] squeal daemon: code store: last minute: 4 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T03:26:42.772Z [577038] squeal daemon: long write: store.sqlite write lock held 277 ms by #write < #record; 4603 rows written
+2026-11-28T03:27:38.167Z [577038] squeal daemon: code store: last minute: 17 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T03:27:41.526Z [577038] squeal daemon: long write: store.sqlite write lock held 319 ms by #write < #record; 4281 rows written
+2026-11-28T03:28:16.872Z [577038] squeal daemon: daemon stopped: squeal stop
+2026-11-28T03:28:16.882Z [577038] squeal daemon: code store: last minute: 25 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T03:28:17.057Z [577038] squeal daemon: hook writes: 2 taken, queue wait p95 1 ms max 1 ms
+2026-11-28T03:28:17.059Z [577038] squeal daemon: daemon stopped: squeal stop

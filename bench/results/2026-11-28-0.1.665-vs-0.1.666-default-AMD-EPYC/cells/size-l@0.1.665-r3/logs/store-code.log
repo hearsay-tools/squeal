@@ -1,0 +1,16 @@
+2026-11-28T02:03:02.192Z [372855] store process: serving /home/user/results/cells/size-l@0.1.665-r3/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/size-l@0.1.665-r3/work/run/squeal-code-bf3d0604cede7a8d.sock
+2026-11-28T02:04:02.194Z [372855] store process: last minute: edit: 152 written, 0 failed, queue wait p50 0 ms max 3 ms, busy 1985 ms; record: 82 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1973 ms
+2026-11-28T02:05:02.194Z [372855] store process: last minute: record: 72 written, 0 failed, queue wait p50 0 ms max 1 ms, busy 1037 ms
+2026-11-28T02:06:02.193Z [372855] store process: last minute: record: 67 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 785 ms
+2026-11-28T02:07:02.196Z [372855] store process: last minute: record: 66 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1061 ms
+2026-11-28T02:08:02.196Z [372855] store process: last minute: record: 84 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 2816 ms
+2026-11-28T02:09:02.197Z [372855] store process: last minute: edit: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 40 ms; record: 5 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 93 ms
+2026-11-28T02:10:02.197Z [372855] store process: last minute: edit: 15 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 126 ms; record: 79 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1192 ms
+2026-11-28T02:11:02.198Z [372855] store process: last minute: edit: 15 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 197 ms; record: 97 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1912 ms
+2026-11-28T02:12:02.199Z [372855] store process: last minute: edit: 21 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 231 ms; record: 43 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 343 ms
+2026-11-28T02:13:02.200Z [372855] store process: last minute: edit: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 41 ms; record: 32 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 382 ms
+2026-11-28T02:14:02.199Z [372855] store process: last minute: record: 70 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1114 ms
+2026-11-28T02:15:02.199Z [372855] store process: last minute: record: 43 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 586 ms
+2026-11-28T02:16:02.199Z [372855] store process: last minute: record: 65 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 995 ms
+2026-11-28T02:16:10.277Z [372855] store process: stopping (stopped): record: 22 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 181 ms
+2026-11-28T02:16:10.372Z [372855] store process: ended (stopped)

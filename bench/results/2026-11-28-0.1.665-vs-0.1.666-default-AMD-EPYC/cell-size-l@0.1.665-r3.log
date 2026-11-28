@@ -1,0 +1,7 @@
+[2026-11-28T01:58:59.172Z] size-l@0.1.665-r3: plain vitest run
+[2026-11-28T02:02:35.836Z] size-l@0.1.665-r3: squeal start + run --all
+[2026-11-28T02:07:38.966Z] size-l@0.1.665-r3: wait for the store process to go quiet
+[2026-11-28T02:07:46.969Z] size-l@0.1.665-r3: idle
+[2026-11-28T02:08:46.979Z] size-l@0.1.665-r3: sessions
+[2026-11-28T02:16:09.980Z] size-l@0.1.665-r3: collect
+[2026-11-28T02:16:14.514Z] size-l@0.1.665-r3: done

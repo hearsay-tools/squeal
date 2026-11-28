@@ -1,0 +1,30 @@
+2026-11-28T02:50:56.466Z [507188] squeal daemon: serving /home/user/results/cells/wt-3@0.1.665-r3/work/wt0 on /home/user/results/cells/wt-3@0.1.665-r3/work/run/squeal-e13bc5f050da051a.sock
+2026-11-28T02:50:56.535Z [507188] squeal daemon: full integrity check: ok
+2026-11-28T02:51:49.717Z [507188] squeal daemon: code store: last minute: 94 batches through the store process, 1 written here (none running 1, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:52:49.718Z [507188] squeal daemon: code store: last minute: 12 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:52:54.808Z [507188] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 275 to 203 MiB in a 62 ms pause
+2026-11-28T02:53:49.719Z [507188] squeal daemon: hook writes: 12 taken, queue wait p95 10 ms max 10 ms
+2026-11-28T02:53:49.719Z [507188] squeal daemon: code store: last minute: 50 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:54:49.732Z [507188] squeal daemon: hook writes: 12 taken, queue wait p95 18 ms max 18 ms
+2026-11-28T02:54:49.733Z [507188] squeal daemon: code store: last minute: 96 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:55:10.100Z [507188] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (4 of 4 cores in use; Squeal's daemons hold 0 of 3 test slots); the daemon asks again every 2 s
+2026-11-28T02:55:10.740Z [507188] squeal daemon: the pool granted the vitest lane's tier after 1 s of waiting for CPU
+2026-11-28T02:55:49.755Z [507188] squeal daemon: hook writes: 15 taken, queue wait p95 9 ms max 9 ms
+2026-11-28T02:55:49.755Z [507188] squeal daemon: code store: last minute: 78 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:56:21.355Z [507188] squeal daemon: long write: store.sqlite write lock held 262 ms by reconcileBatch < #pass < withBusySlice; 8005 rows written
+2026-11-28T02:56:22.753Z [507188] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (3 of 4 cores in use; Squeal's daemons hold 3 of 3 test slots); the daemon asks again every 2 s
+2026-11-28T02:56:24.759Z [507188] squeal daemon: the background ceiling refused a backlog tier: 3 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-28T02:56:42.791Z [507188] squeal daemon: the background ceiling let a backlog tier start after 18 s and 9 refused looks
+2026-11-28T02:56:42.793Z [507188] squeal daemon: the pool granted the vitest lane's tier after 20 s of waiting for CPU
+2026-11-28T02:56:49.798Z [507188] squeal daemon: hook writes: 9 taken, queue wait p95 2 ms max 2 ms
+2026-11-28T02:56:49.798Z [507188] squeal daemon: code store: last minute: 40 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:57:44.223Z [507188] squeal daemon: long write: store.sqlite write lock held 416 ms by #write < #record < squeal.mjs:71697; 4603 rows written
+2026-11-28T02:57:44.223Z [507188] squeal daemon: the store was busy for 0.5 s (another connection held its write lock); ran once it was free: the results of 200 files
+2026-11-28T02:57:49.818Z [507188] squeal daemon: code store: last minute: 20 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:58:45.578Z [507188] squeal daemon: long write: store.sqlite write lock held 413 ms by #write < #record; 4603 rows written
+2026-11-28T02:58:49.817Z [507188] squeal daemon: code store: last minute: 18 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:59:01.325Z [507188] squeal daemon: busy, heap in use 60 MiB over twice the last live size of 26 MiB: a last-resort GC took private memory from 268 to 223 MiB in a 66 ms pause; 31 MiB of heap in use after it
+2026-11-28T02:59:07.866Z [507188] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-28T02:59:07.886Z [507188] squeal daemon: code store: last minute: 10 batches through the store process, 0 written here (none running 0, refused 0, lost 0, hung and ended 0), 0 failed
+2026-11-28T02:59:08.000Z [507188] squeal daemon: hook writes: 2 taken, queue wait p95 1 ms max 1 ms
+2026-11-28T02:59:08.004Z [507188] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

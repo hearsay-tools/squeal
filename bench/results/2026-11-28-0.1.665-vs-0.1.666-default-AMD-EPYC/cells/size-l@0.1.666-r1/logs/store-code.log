@@ -1,0 +1,14 @@
+2026-11-28T00:45:39.408Z [118536] store process: serving /home/user/results/cells/size-l@0.1.666-r1/work/wt0/.git/squeal/code.sqlite at schema 1 on /home/user/results/cells/size-l@0.1.666-r1/work/run/squeal-code-1272bcc47e368a80.sock
+2026-11-28T00:46:39.409Z [118536] store process: last minute: edit: 152 written, 0 failed, queue wait p50 0 ms max 1 ms, busy 1204 ms; record: 60 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1040 ms
+2026-11-28T00:47:39.410Z [118536] store process: last minute: record: 78 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 771 ms
+2026-11-28T00:48:39.410Z [118536] store process: last minute: record: 105 written, 0 failed, queue wait p50 0 ms max 1 ms, busy 1118 ms
+2026-11-28T00:49:39.410Z [118536] store process: last minute: record: 76 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 642 ms
+2026-11-28T00:50:39.411Z [118536] store process: last minute: edit: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 39 ms; record: 6 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 94 ms
+2026-11-28T00:51:39.412Z [118536] store process: last minute: edit: 15 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 105 ms; record: 73 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 992 ms
+2026-11-28T00:52:39.412Z [118536] store process: last minute: edit: 18 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 161 ms; record: 84 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 1085 ms
+2026-11-28T00:53:39.411Z [118536] store process: last minute: edit: 18 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 127 ms; record: 41 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 389 ms
+2026-11-28T00:54:39.411Z [118536] store process: last minute: edit: 3 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 24 ms; record: 45 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 543 ms
+2026-11-28T00:55:39.412Z [118536] store process: last minute: record: 64 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 863 ms
+2026-11-28T00:56:39.412Z [118536] store process: last minute: record: 59 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 857 ms
+2026-11-28T00:57:22.332Z [118536] store process: stopping (stopped): record: 51 written, 0 failed, queue wait p50 0 ms max 0 ms, busy 692 ms
+2026-11-28T00:57:22.401Z [118536] store process: ended (stopped)

@@ -1,0 +1,7 @@
+[2026-11-28T03:08:41.590Z] load-50@0.1.666-r1: plain vitest run
+[2026-11-28T03:09:54.005Z] load-50@0.1.666-r1: squeal start + run --all
+[2026-11-28T03:11:46.855Z] load-50@0.1.666-r1: wait for the store process to go quiet
+[2026-11-28T03:11:52.856Z] load-50@0.1.666-r1: idle
+[2026-11-28T03:12:52.865Z] load-50@0.1.666-r1: sessions
+[2026-11-28T03:18:18.193Z] load-50@0.1.666-r1: collect
+[2026-11-28T03:18:22.168Z] load-50@0.1.666-r1: done
